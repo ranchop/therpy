@@ -48,7 +48,20 @@ class Curve:
 		self.yLatest = self.ySubSample.copy()
 		return (self.xLatest, self.yLatest)
 
+	def sortbyx(self):
+		index_sort = np.argsort(self.x)
+		self.x = self.x[index_sort]
+		self.y = self.y[index_sort]
+
+	def binbyx(self,**kwargs):
+		self.xBinByX, self.yBinByX = smooth.binbyx_array_equal(self.x, self.y, **kwargs)
+		self.xLatest = self.xBinByX.copy()
+		self.yLatest = self.yBinByX.copy()
+		return (self.xLatest, self.yLatest)
+
 	def binbyx_ae(self, bins):
+		# Warning
+		print('please REPLACE binbyx_ae WITH binbyx')
 		self.xBinByX, self.yBinByX = smooth.binbyx_array_equal(self.x, self.y, bins=bins)
 		self.xLatest = self.xBinByX.copy()
 		self.yLatest = self.yBinByX.copy()

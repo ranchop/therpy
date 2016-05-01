@@ -15,13 +15,18 @@ import therpy
 # Housekeeping
 import os.path, sys
 sys.path.append(os.path.join(os.path.expanduser('~'), 'Documents', 'My Programs', 'Python Library'))
-# Imports
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-import therpy as tp
 # Matplotlib backend interactive
 import matplotlib
 matplotlib.use('nbagg')
 # Matplotlib backend static
 # %matplotlib inline
+# Imports
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import therpy as tp
+
+
+
+### Directory change for shell, computer specific
+cd ‘/Users/RanchoP/Documents/My Programs/Python Library’
