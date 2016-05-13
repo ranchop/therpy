@@ -1,7 +1,9 @@
 # Imagedata : manipulating image data
 import numpy as np
 import matplotlib.pyplot as plt
-
+import matplotlib.patches as patches
+from scipy.optimize import curve_fit
+from scipy.special import erf
 
 def get_cropi(data,center=None,width=None,height=None,point1=None,point2=None,point=None):
 	# Prepare Output
@@ -9,7 +11,6 @@ def get_cropi(data,center=None,width=None,height=None,point1=None,point2=None,po
 	y = np.arange(0,data.shape[0])
 	[XX,YY] = np.meshgrid(x,y)
 	cropi = (slice(None,None),slice(None,None))
-
 	# Option 1 -- center width and height
 	if center is not None:
 		if width is None and height is None: return cropi
@@ -19,14 +20,12 @@ def get_cropi(data,center=None,width=None,height=None,point1=None,point2=None,po
 		xmax = min(x[-1], xmin + width)
 		ymin = max(0, center[1] - int(height/2.0))
 		ymax = min(y[-1], ymin + height)
-
 	# Option 2 -- point1 and point 2
 	elif point1 is not None and point2 is not None:
 		xmin = max(min(point1[0], point2[0]) , 0    )
 		xmax = min(max(point1[0], point2[0]) , x[-1]) + 1
 		ymin = max(min(point1[1], point2[1]) , 0    )
 		ymax = min(max(point1[1], point2[1]) , y[-1]) + 1
-
 	# Option 3 -- point and width and height
 	elif point is not None:
 		if width is None and height is None: return cropi
@@ -38,10 +37,93 @@ def get_cropi(data,center=None,width=None,height=None,point1=None,point2=None,po
 		ymax = min(point[1] + height, y[-1])
 	else:
 		return cropi
-
 	# Return a np array of true false
 	return (slice(ymin,ymax),slice(xmin,xmax))
 
+def get_od(wa,woa,**kwargs):
+	# Inputs
+	width = kwargs.get('width', 5)
+	# Useful quantities
+	X,Y = np.meshgrid(np.arange(wa.shape[1]), np.arange(wa.shape[0]))
+	with np.errstate(divide='ignore',invalid='ignore'): od = np.log(woa/wa)
+	pts = np.logical_not(np.isfinite(od))
+	Xp,Yp = X[pts], Y[pts]
+	# Average neighbors
+	for i,x in enumerate(Xp):
+		cropi = get_cropi(X,center=(Xp[i],Yp[i]),width=width)
+		replace = od[cropi].flatten()
+		replace = replace[np.isfinite(replace)]
+		if replace.size == 0: replace = 0
+		else: replace = np.mean(replace)
+		od[Yp[i],Xp[i]] = replace
+	# return fixed od
+	return od
+
+def com(data):
+	X,Y = np.meshgrid(np.arange(data.shape[1]),np.arange(data.shape[0]))
+	total = np.sum(data)
+	x0 = np.sum(data*X) / total
+	y0 = np.sum(data*Y) / total   
+	return (x0,y0)
+
+def box_sharpness(data, **kwargs):
+	# Treating data
+	data[np.logical_not(np.isfinite(data))] = 0
+	# Inputs
+	plot = kwargs.get('plot',True)
+	thickness = kwargs.get('thickness',10)
+	length = kwargs.get('length',200)
+	center = kwargs.get('center', com(data))
+	using = kwargs.get('using','May16')
+	guess_side = kwargs.get('guess_side',None)
+	guess_top = kwargs.get('guess_top',None)
+	threshold = kwargs.get('threshold',np.inf)
+	# Default values
+	if using == 'May16':
+		thickness = 10
+		length = 200
+		guess_side = (0.1,55,length/2)
+		guess_top = (2.5,length/2-26,length/2+26,3,3)
+	# Get crop regions
+	crop1 = get_cropi(data,center=center,width=length,height=thickness)
+	crop2 = get_cropi(data,center=center,width=thickness,height=length)
+	crop3 = get_cropi(data,center=center,width=length,height=length)
+	# Cuts
+	y1o = np.sum(data[crop1],axis=0)
+	x1o = np.arange(y1o.size)
+	y2o = np.sum(data[crop2],axis=1)
+	x2o = np.arange(y2o.size)
+	# Thresholds
+	x1 = x1o[np.less(y1o,threshold)]
+	y1 = y1o[np.less(y1o,threshold)]
+	x2 = x2o[np.less(y2o,threshold)]
+	y2 = y2o[np.less(y2o,threshold)]
+	# Fitting functions
+	def side_circle(x,amp,rad,x0):
+		y = amp * np.real(np.sqrt(rad**2 - (x-x0)**2))
+		y[np.isnan(y)]=0
+		return y
+	def top_erf(x,amp,x1,x2,s1,s2):
+		return amp * (erf((x-x1)/(np.sqrt(2)*s1)) + erf(-(x-x2)/(np.sqrt(2)*s2)))
+	# Fits
+	res1,_ = curve_fit(side_circle,x1,y1,p0=guess_side)
+	res2,_ = curve_fit(top_erf,x2,y2,p0=guess_top)
+	# Prepare outputs
+	outp = {'res1':res1,'res2':res2,'thickness':res2[2]-res2[1],'radius':res1[1]}
+	outp['center'] = center
+	outp['guess_side'] = guess_side
+	outp['guess_top'] = guess_top
+	# Plots
+	if plot:
+		fig,axes = plt.subplots(ncols=3,figsize=(12,3))
+		axes[0].plot(x1o,y1o,x1,y1,x1o,side_circle(x1o,*res1))
+		axes[1].plot(x2o,y2o,x2,y2,x2o,top_erf(x2o,*res2))
+		axes[2].imshow(data)
+		axes[2].scatter(*center)
+		axes[2].add_patch(patches.Rectangle((center[0]-length/2,center[1]-length/2),length,length,fill=False))
+		outp['plot'] = fig
+	# return
+	return outp
 
 
 def main():

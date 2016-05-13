@@ -108,8 +108,6 @@ def binbyx_array_equal(*args,**kwargs):
 
 # Bin y1, y2, ... by x using given bins array center
 def binbyx_array(*args,**kwargs):
-	# Warming
-	print('please REPLACE binbyx_array WITH binbyx')
 	# Process inputs
 	binsarray = kwargs.get('bins',None)
 	emptybins = kwargs.get('emptybins',np.nan)

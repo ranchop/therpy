@@ -30,43 +30,83 @@ else:
 class Curve:
 	'''
 	class for generic function f(xi) = yi
+
+	Properties:
+		x, y, data, dx, sorti
+
+	Methods:
+		__call__
+		inverse (in progress)
+		loc (in progress)
+		sortbyx : returns sorted (x,y)
+		binbyx : returns binned (x,y)
+		subsample : returns sub sampled (x,y)
+		diff (in progress)
+		int (in progress)
 	'''
 
-	def __init__(self, x=np.array([]), y=np.array([])):
-		self.x = x.copy()
-		self.y = y.copy()
-		self.xLatest = x.copy()
-		self.yLatest = y.copy()
+	def __init__(self, x=None, y=np.array([])):
+		if x is None: x = np.arange(y.size)
+		self.var = {'x': x.copy(), 'y': y.copy()}
 
-	def __call__(self,xi,method='nearest'):
-		# Curve(x) returns yi for the i such that x ~ xi
-		pass 
+	### Properties ###
 
-	def subsample(self, bins=2):
-		self.xSubSample, self.ySubSample = smooth.subsampleavg(self.x, self.y, bins=bins)
-		self.xLatest = self.xSubSample.copy()
-		self.yLatest = self.ySubSample.copy()
-		return (self.xLatest, self.yLatest)
+	@property
+	def x(self): return self.var.get('x',np.array([]))
 
-	def sortbyx(self):
-		index_sort = np.argsort(self.x)
-		self.x = self.x[index_sort]
-		self.y = self.y[index_sort]
+	@property
+	def y(self): return self.var.get('y',np.array([]))
 
-	def binbyx(self,**kwargs):
-		self.xBinByX, self.yBinByX = smooth.binbyx_array_equal(self.x, self.y, **kwargs)
-		self.xLatest = self.xBinByX.copy()
-		self.yLatest = self.yBinByX.copy()
-		return (self.xLatest, self.yLatest)
+	@property
+	def sorti(self):
+		sorti = self.var.get('sorti',None)
+		if sorti is None:
+			sorti = np.argsort(self.x)
+			self.var['sorti'] = sorti
+		return sorti
 
-	def binbyx_ae(self, bins):
-		# Warning
-		print('please REPLACE binbyx_ae WITH binbyx')
-		self.xBinByX, self.yBinByX = smooth.binbyx_array_equal(self.x, self.y, bins=bins)
-		self.xLatest = self.xBinByX.copy()
-		self.yLatest = self.yBinByX.copy()
-		return (self.xLatest, self.yLatest)
+	@property
+	def dx(self):
+		return (self.x[1] - self.x[0])
+	
+	@property
+	def data(self):
+		return (self.x, self.y)
 
+	@property
+	def max(self):
+		return (None)
+
+
+	### High level methods ###
+	def __call__(self,xi):
+		return self.y[self.sorti][self.locx(xi)]
+	def __str__(self):
+		des = 'A curve with ' + str(self.x.size) + ' data points.'
+		return des
+	def inverse(self,yi): pass
+	def loc(self,x=None,y=None):
+		if x != None: return self.locx(x)
+		elif y!= None: return self.locy(y)
+		else: print('ERROR: Please provide x or y')
+		return 0
+	def sortbyx(self): return (self.x[self.sorti], self.y[self.sorti])
+	def binbyx(self,**kwargs): return smooth.binbyx(self.x, self.y, **kwargs)
+	def subsample(self, bins=2): return smooth.subsampleavg(self.x, self.y, bins=bins)
+	
+
+
+
+	### Low level methods ###
+	def locx(self,xi):
+		x = self.x[self.sorti]
+		iloc = np.argwhere(x<=xi)
+		if len(iloc) == 0: return 0
+		elif len(iloc) == x.size: return x.size - 1
+		else: iloc = iloc[-1,0]
+		if (xi-x[iloc]) >= (x[iloc+1]-xi): iloc += 1
+		return iloc
+	def locy(self,yi): pass
 	def diff(self, **kwargs):
 		method = kwargs.get('method','poly')
 		self.xDiff = self.xLatest
@@ -76,7 +116,6 @@ class Curve:
 		elif method == 'gaussian filter':
 			self.dydx = calculus.numder_gaussian_filter(self.xDiff, self.yDiff, order=1, sigma=kwargs.get('sigma',1))
 		return (self.xDiff, self.dydx)
-
 	def int(self, **kwargs):
 		method = kwargs.get('method','sum')
 		self.xInt = self.xLatest
@@ -85,28 +124,29 @@ class Curve:
 			self.Int = np.sum(self.y) * self.dx
 		return self.Int
 
-	@property
-	def dx(self):
-	    return (self.x[1] - self.x[0])
-	
-	@property
-	def plotdata(self):
-	    return (self.xLatest, self.yLatest)
-
 
 # Absorption Image Class
 class AbsImage():
 	'''
 	Absorption Image Class
+
 	Inputs:
-	name (image filename with date prefix) or
-	wa and woa (numpy arrays)
+		one of the three ways to define an image
+		constants object (default is Li 6 Top Imaging)
+
+
+	Inputs (Three ways to define an image):
+		1) name (image filename with date prefix)
+		2) wa and woa (numpy arrays)
+		3) od (numpy array)
 	cst object
 	'''
-	def __init__(self, **kwargs):
+	def __init__(self, *args,**kwargs):
 		# Create a dict var to store all information
 		self.var = kwargs
 		self.cst = kwargs.get('cst',constants.cst())
+		# Check the args
+		if len(args)>0 and type(args[0]) is str: self.var['name'] = args[0]
 
 	# Universal Properties
 	@property
@@ -127,8 +167,9 @@ class AbsImage():
 
 	@property
 	def od(self):
-		with np.errstate(divide='ignore',invalid='ignore'):
-			return np.log(self.woa/self.wa)
+		if 'od' not in self.var.keys():
+			self.var['od'] = imagedata.get_od(self.wa, self.woa, width=self.var.get('trouble_pts_width',5))
+		return self.var['od']
 
 	@property
 	def ncol(self): 
@@ -158,17 +199,28 @@ class AbsImage():
 
 	@property
 	def alldata(self): return imageio.imagedataraw2imagedataall(self.rawdata)
-	
-	
+		
 	# Crop index function
 	def cropi(self,**kwargs): return imagedata.get_cropi(self.od,**kwargs)
 
+	# Averaging multiple images together
+	def avgod(self,*args):
+		avg = self.od
+		for im in args: avg += im.od
+		return avg / (1 + len(args))
 
+	# Fixing nan and inf
+	# Example
+	# indices = np.where(np.isnan(a)) #returns an array of rows and column indices
+	# for row, col in zip(*indices):
+	# a[row,col] = np.mean(a[~np.isnan(a[:,col]), col]) need to modify this
 
-	# Useful functions
-	def __str__(self):
-		des = 'Absorption Image: ' + self.name + ' Image size: ' + str(self.od.shape)
-		return des
+	# def interpolate_nans(X):
+	# """Overwrite NaNs with column value interpolations."""
+	# for j in range(X.shape[1]):
+	# 	mask_j = np.isnan(X[:,j])
+	# 	X[mask_j,j] = np.interp(np.flatnonzero(mask_j), np.flatnonzero(~mask_j), X[~mask_j,j])
+	# return X
 	
 
 

@@ -13,3 +13,4 @@ from therpy import constants
 from therpy import functions
 
 from therpy.constants import cst
+from therpy.classes import Curve, AbsImage

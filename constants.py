@@ -4,7 +4,7 @@ import numpy as np
 
 ## Temporary constants
 _TRAP_OMEGA = 2 * np.pi * 23.9
-_TRAP_VOLUME = np.pi * (60e-6)**2 * 50e6
+_TRAP_VOLUME = np.pi * (70e-6)**2 * 80e-6
 
 class cst:
 	'''
@@ -90,6 +90,10 @@ class cst:
 		self.recoilv = self.hbar * self.k / self.mass
 		self.sigma0 = 6 * self.pi * ( self.wavelength / self.twopi )**2
 
+
+	## NEEDS WORK
+	# define sets of experimental constants with keywords (ex. LiTopMay2016)
+	# keyword using='LiTopMay2016'
 	def _fill_exp_constants(self):
 		self.sigma = self.sigma0 * self.var.get('sigmaf',1)
 		self.Nsat = self.var.get('Nsat',np.inf)

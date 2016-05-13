@@ -4,6 +4,7 @@
 import numpy as np
 import os
 import datetime
+from datetime import timedelta
 import re
 import pyfits
 import matplotlib.pyplot as pp
@@ -66,24 +67,46 @@ def backupimage(imagepath_original, imagepath_backup):
 
 # string for subfolder = imagename2subfolder( string for image name )
 def imagename2subfolder(imagename = None):
-    # Special case if imagename is not provided
-    if imagename is None: return 'None'
-    # Default values for pattern (future version: include as an optional input)
-    re_pattern = '\d\d-\d\d-\d\d\d\d_\d\d_\d\d_\d\d'
-    datetime_format = '%m-%d-%Y_%H_%M_%S'
-    # Find '/' in the string and remove it -- to be done
-    # Extract datetime
-    imagetimestr = re.findall(re_pattern,imagename)
-    if len(imagetimestr) == 1: imagetimestr = imagetimestr[0]
-    else: return 'None'
-    try: imagetime = datetime.datetime.strptime(imagetimestr,datetime_format)
-    except ValueError as err: return err
-    # Create subfolder
-    imageyear = imagetime.strftime('%Y')
-    imagemonth = imagetime.strftime('%Y-%m')
-    imagedate = imagetime.strftime('%Y-%m-%d')
-    subfolder = os.path.join( imageyear, imagemonth, imagedate )
-    return subfolder
+	# Special case if imagename is not provided
+	if imagename is None: return 'None'
+	# Default values for pattern (future version: include as an optional input)
+	re_pattern = '\d\d-\d\d-\d\d\d\d_\d\d_\d\d_\d\d'
+	datetime_format = '%m-%d-%Y_%H_%M_%S'
+	# Find '/' in the string and remove it -- to be done
+	# Extract datetime
+	imagetimestr = re.findall(re_pattern,imagename)
+	if len(imagetimestr) == 1: imagetimestr = imagetimestr[0]
+	else: return 'None'
+	try: imagetime = datetime.datetime.strptime(imagetimestr,datetime_format)
+	except ValueError as err: return err
+	# Create subfolder
+	imageyear = imagetime.strftime('%Y')
+	imagemonth = imagetime.strftime('%Y-%m')
+	imagedate = imagetime.strftime('%Y-%m-%d')
+	subfolder = os.path.join( imageyear, imagemonth, imagedate )
+	return subfolder
+
+# string for subfolder = imagename2subfolder( string for image name )
+def imagename2subfolder_yesterday(imagename = None):
+	# Special case if imagename is not provided
+	if imagename is None: return 'None'
+	# Default values for pattern (future version: include as an optional input)
+	re_pattern = '\d\d-\d\d-\d\d\d\d_\d\d_\d\d_\d\d'
+	datetime_format = '%m-%d-%Y_%H_%M_%S'
+	# Find '/' in the string and remove it -- to be done
+	# Extract datetime
+	imagetimestr = re.findall(re_pattern,imagename)
+	if len(imagetimestr) == 1: imagetimestr = imagetimestr[0]
+	else: return 'None'
+	try: imagetime = datetime.datetime.strptime(imagetimestr,datetime_format)
+	except ValueError as err: return err
+	# Create subfolder for yesterday
+	imagetime = imagetime - timedelta(days=1)
+	imageyear = imagetime.strftime('%Y')
+	imagemonth = imagetime.strftime('%Y-%m')
+	imagedate = imagetime.strftime('%Y-%m-%d')
+	subfolder = os.path.join( imageyear, imagemonth, imagedate )
+	return subfolder
 
 # imagedata = imagename2imagepath(imagename)
 def imagename2imagepath(imagename):
@@ -113,7 +136,11 @@ def imagename2imagepath(imagename):
 	imagepath = os.path.join(basepath,subpath,imagename)
 	# Check if file exists
 	if os.path.exists(imagepath) is False:
-		raise FileNotFoundError('Image NOT present on the server: Possibly invalid filename?')
+		imagepath_today = imagepath
+		subpath = imagename2subfolder_yesterday(imagename)
+		imagepath = os.path.join(basepath,subpath,imagename)
+		if os.path.exists(imagepath) is False:
+			raise FileNotFoundError('Image NOT present on the server: Possibly invalid filename or folder location? Not found at : {} and {}'.format(imagepath_today,imagepath))
 	# Copy file to backup location
 	backupimage(imagepath, imagepath_backup)
 	# Return the backup path
