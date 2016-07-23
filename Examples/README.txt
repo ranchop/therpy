@@ -1,1 +1,1 @@
-Exaples will be added in future versions
+Open the Jupyter Notebook for a specific module for examples. 

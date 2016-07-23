@@ -1,0 +1,243 @@
+(* Content-type: application/vnd.wolfram.mathematica *)
+
+(*** Wolfram Notebook File ***)
+(* http://www.wolfram.com/nb *)
+
+(* CreatedBy='Mathematica 10.1' *)
+
+(*CacheID: 234*)
+(* Internal cache information:
+NotebookFileLineBreakTest
+NotebookFileLineBreakTest
+NotebookDataPosition[       158,          7]
+NotebookDataLength[      8628,        235]
+NotebookOptionsPosition[      8181,        214]
+NotebookOutlinePosition[      8541,        230]
+CellTagsIndexPosition[      8498,        227]
+WindowFrame->Normal*)
+
+(* Beginning of Notebook Content *)
+Notebook[{
+
+Cell[CellGroupData[{
+Cell[BoxData[
+ RowBox[{"Manipulate", "[", 
+  RowBox[{
+   RowBox[{"Plot", "[", 
+    RowBox[{
+     RowBox[{
+      FractionBox[
+       SuperscriptBox["\[Omega]R", "2"], 
+       RowBox[{
+        SuperscriptBox["\[Omega]R", "2"], "+", 
+        SuperscriptBox[
+         RowBox[{"(", 
+          RowBox[{"\[Omega]0", "-", "\[Omega]"}], ")"}], "2"]}]], 
+      SuperscriptBox[
+       RowBox[{"Sin", "[", 
+        RowBox[{"2", "\[Pi]", 
+         FractionBox[
+          RowBox[{
+           SqrtBox[
+            RowBox[{
+             SuperscriptBox["\[Omega]R", "2"], "+", 
+             SuperscriptBox[
+              RowBox[{"(", 
+               RowBox[{"\[Omega]0", "-", "\[Omega]"}], ")"}], "2"]}]], "t"}], 
+          "2"]}], "]"}], "2"]}], ",", 
+     RowBox[{"{", 
+      RowBox[{"\[Omega]", ",", 
+       RowBox[{"\[Omega]0", "-", "\[Delta]"}], ",", 
+       RowBox[{"\[Omega]0", "+", "\[Delta]"}]}], "}"}]}], "]"}], ",", 
+   RowBox[{"{", 
+    RowBox[{"{", 
+     RowBox[{"t", ",", 
+      RowBox[{"0.2", " ", 
+       SuperscriptBox["10", 
+        RowBox[{"-", "3"}]]}]}], "}"}], "}"}], ",", 
+   RowBox[{"{", 
+    RowBox[{"{", 
+     RowBox[{"\[Omega]R", ",", 
+      RowBox[{"2.576", " ", 
+       SuperscriptBox["10", "3"]}]}], "}"}], "}"}], ",", 
+   RowBox[{"{", 
+    RowBox[{"{", 
+     RowBox[{"\[Delta]", ",", 
+      RowBox[{"10", " ", 
+       SuperscriptBox["10", "3"]}]}], "}"}], "}"}], ",", 
+   RowBox[{"{", 
+    RowBox[{"{", 
+     RowBox[{"\[Omega]0", ",", 
+      RowBox[{"81.355", " ", 
+       SuperscriptBox["10", "6"]}]}], "}"}], "}"}]}], "]"}]], "Input",
+ CellChangeTimes->{{3.6574146271939163`*^9, 3.6574146284360404`*^9}, {
+  3.6574146999091873`*^9, 3.657414791161311*^9}, {3.657415256986889*^9, 
+  3.6574154115433435`*^9}, {3.6574174267820883`*^9, 3.657417451925088*^9}}],
+
+Cell[BoxData[
+ TagBox[
+  StyleBox[
+   DynamicModuleBox[{$CellContext`t$$ = 0.0002, $CellContext`\[Delta]$$ = 
+    10000, $CellContext`\[Omega]0$$ = 8.1355*^7, $CellContext`\[Omega]R$$ = 
+    2576., Typeset`show$$ = True, Typeset`bookmarkList$$ = {}, 
+    Typeset`bookmarkMode$$ = "Menu", Typeset`animator$$, Typeset`animvar$$ = 
+    1, Typeset`name$$ = "\"untitled\"", Typeset`specs$$ = {{{
+       Hold[$CellContext`t$$], 0.0002}}, {{
+       Hold[$CellContext`\[Omega]R$$], 2576.}}, {{
+       Hold[$CellContext`\[Delta]$$], 10000}}, {{
+       Hold[$CellContext`\[Omega]0$$], 8.1355*^7}}}, Typeset`size$$ = {
+    360., {99., 103.}}, Typeset`update$$ = 0, Typeset`initDone$$, 
+    Typeset`skipInitDone$$ = True}, 
+    DynamicBox[Manipulate`ManipulateBoxes[
+     1, StandardForm, 
+      "Variables" :> {$CellContext`t$$ = 0.0002, $CellContext`\[Delta]$$ = 
+        10000, $CellContext`\[Omega]0$$ = 8.1355*^7, $CellContext`\[Omega]R$$ = 
+        2576.}, "ControllerVariables" :> {}, 
+      "OtherVariables" :> {
+       Typeset`show$$, Typeset`bookmarkList$$, Typeset`bookmarkMode$$, 
+        Typeset`animator$$, Typeset`animvar$$, Typeset`name$$, 
+        Typeset`specs$$, Typeset`size$$, Typeset`update$$, Typeset`initDone$$,
+         Typeset`skipInitDone$$}, "Body" :> 
+      Plot[($CellContext`\[Omega]R$$^2/($CellContext`\[Omega]R$$^2 + \
+($CellContext`\[Omega]0$$ - $CellContext`\[Omega])^2)) 
+        Sin[2 Pi (($CellContext`\[Omega]R$$^2 + ($CellContext`\[Omega]0$$ - \
+$CellContext`\[Omega])^2)^Rational[1, 2] $CellContext`t$$/
+            2)]^2, {$CellContext`\[Omega], $CellContext`\[Omega]0$$ - \
+$CellContext`\[Delta]$$, $CellContext`\[Omega]0$$ + $CellContext`\[Delta]$$}],
+       "Specifications" :> {{{$CellContext`t$$, 
+          0.0002}}, {{$CellContext`\[Omega]R$$, 
+          2576.}}, {{$CellContext`\[Delta]$$, 
+          10000}}, {{$CellContext`\[Omega]0$$, 8.1355*^7}}}, "Options" :> {}, 
+      "DefaultOptions" :> {}],
+     ImageSizeCache->{411., {173., 180.}},
+     SingleEvaluation->True],
+    Deinitialization:>None,
+    DynamicModuleValues:>{},
+    SynchronousInitialization->True,
+    UndoTrackedVariables:>{Typeset`show$$, Typeset`bookmarkMode$$},
+    UnsavedVariables:>{Typeset`initDone$$},
+    UntrackedVariables:>{Typeset`size$$}], "Manipulate",
+   Deployed->True,
+   StripOnInput->False],
+  Manipulate`InterpretManipulate[1]]], "Output",
+ CellChangeTimes->{
+  3.657414795456741*^9, {3.6574152594701376`*^9, 3.657415272718462*^9}, 
+   3.6574154226674557`*^9, {3.6574174291220884`*^9, 3.6574174529400883`*^9}}]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"Manipulate", "[", 
+  RowBox[{
+   RowBox[{"Plot", "[", 
+    RowBox[{
+     RowBox[{
+      FractionBox[
+       SuperscriptBox["\[Omega]R", "2"], 
+       RowBox[{
+        SuperscriptBox["\[Omega]R", "2"], "+", 
+        SuperscriptBox[
+         RowBox[{"(", "\[CapitalDelta]", ")"}], "2"]}]], 
+      SuperscriptBox[
+       RowBox[{"Sin", "[", 
+        RowBox[{"2", "\[Pi]", 
+         FractionBox[
+          RowBox[{
+           SqrtBox[
+            RowBox[{
+             SuperscriptBox["\[Omega]R", "2"], "+", 
+             SuperscriptBox[
+              RowBox[{"(", "\[CapitalDelta]", ")"}], "2"]}]], "t"}], "2"]}], 
+        "]"}], "2"]}], ",", 
+     RowBox[{"{", 
+      RowBox[{"\[Omega]R", ",", 
+       RowBox[{"1", " ", 
+        SuperscriptBox["10", "3"]}], ",", 
+       RowBox[{"10", " ", 
+        SuperscriptBox["10", "3"]}]}], "}"}]}], "]"}], ",", 
+   RowBox[{"{", 
+    RowBox[{"{", 
+     RowBox[{"t", ",", 
+      RowBox[{"0.5", " ", 
+       SuperscriptBox["10", 
+        RowBox[{"-", "3"}]]}]}], "}"}], "}"}], ",", 
+   RowBox[{"{", 
+    RowBox[{"{", 
+     RowBox[{"\[CapitalDelta]", ",", "0"}], "}"}], "}"}]}], "]"}]], "Input",
+ CellChangeTimes->{{3.657419671846423*^9, 3.657419755410779*^9}, {
+  3.6574197933905764`*^9, 3.657419861014338*^9}}],
+
+Cell[BoxData[
+ TagBox[
+  StyleBox[
+   DynamicModuleBox[{$CellContext`t$$ = 
+    0.0005, $CellContext`\[CapitalDelta]$$ = 0, Typeset`show$$ = True, 
+    Typeset`bookmarkList$$ = {}, Typeset`bookmarkMode$$ = "Menu", 
+    Typeset`animator$$, Typeset`animvar$$ = 1, Typeset`name$$ = 
+    "\"untitled\"", Typeset`specs$$ = {{{
+       Hold[$CellContext`t$$], 0.0005}}, {{
+       Hold[$CellContext`\[CapitalDelta]$$], 0}}}, Typeset`size$$ = {
+    360., {109., 114.}}, Typeset`update$$ = 0, Typeset`initDone$$, 
+    Typeset`skipInitDone$$ = True}, 
+    DynamicBox[Manipulate`ManipulateBoxes[
+     1, StandardForm, 
+      "Variables" :> {$CellContext`t$$ = 
+        0.0005, $CellContext`\[CapitalDelta]$$ = 0}, 
+      "ControllerVariables" :> {}, 
+      "OtherVariables" :> {
+       Typeset`show$$, Typeset`bookmarkList$$, Typeset`bookmarkMode$$, 
+        Typeset`animator$$, Typeset`animvar$$, Typeset`name$$, 
+        Typeset`specs$$, Typeset`size$$, Typeset`update$$, Typeset`initDone$$,
+         Typeset`skipInitDone$$}, "Body" :> 
+      Plot[($CellContext`\[Omega]R^2/($CellContext`\[Omega]R^2 + \
+$CellContext`\[CapitalDelta]$$^2)) 
+        Sin[2 Pi (($CellContext`\[Omega]R^2 + \
+$CellContext`\[CapitalDelta]$$^2)^Rational[1, 2] $CellContext`t$$/
+            2)]^2, {$CellContext`\[Omega]R, 1 10^3, 10 10^3}], 
+      "Specifications" :> {{{$CellContext`t$$, 
+          0.0005}}, {{$CellContext`\[CapitalDelta]$$, 0}}}, "Options" :> {}, 
+      "DefaultOptions" :> {}],
+     ImageSizeCache->{411., {163., 170.}},
+     SingleEvaluation->True],
+    Deinitialization:>None,
+    DynamicModuleValues:>{},
+    SynchronousInitialization->True,
+    UndoTrackedVariables:>{Typeset`show$$, Typeset`bookmarkMode$$},
+    UnsavedVariables:>{Typeset`initDone$$},
+    UntrackedVariables:>{Typeset`size$$}], "Manipulate",
+   Deployed->True,
+   StripOnInput->False],
+  Manipulate`InterpretManipulate[1]]], "Output",
+ CellChangeTimes->{{3.6574198245576925`*^9, 3.6574198611803546`*^9}}]
+}, Open  ]]
+},
+WindowSize->{606, 399},
+WindowMargins->{{323, Automatic}, {Automatic, 116}},
+FrontEndVersion->"10.4 for Mac OS X x86 (32-bit, 64-bit Kernel) (February 25, \
+2016)",
+StyleDefinitions->"Default.nb"
+]
+(* End of Notebook Content *)
+
+(* Internal cache information *)
+(*CellTagsOutline
+CellTagsIndex->{}
+*)
+(*CellTagsIndex
+CellTagsIndex->{}
+*)
+(*NotebookFileOutline
+Notebook[{
+Cell[CellGroupData[{
+Cell[580, 22, 1770, 52, 122, "Input"],
+Cell[2353, 76, 2538, 48, 370, "Output"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[4928, 129, 1270, 39, 63, "Input"],
+Cell[6201, 170, 1964, 41, 350, "Output"]
+}, Open  ]]
+}
+]
+*)
+
