@@ -1,2 +1,1 @@
-# Misc. functions
-
+# misc functions

@@ -34,7 +34,7 @@ class cst:
 		else: pass # raise error invalid atom type
 		# Fill in the rest
 		self._fill_atomic_constants()
-		self._fill_exp_constants()
+		self._fill_exp_constants(**kwargs)
 	
 	# fill in atom specific params
 	def LiD2(self):
@@ -94,19 +94,41 @@ class cst:
 	## NEEDS WORK
 	# define sets of experimental constants with keywords (ex. LiTopMay2016)
 	# keyword using='LiTopMay2016'
-	def _fill_exp_constants(self):
+	def _fill_exp_constants(self,**kwargs):
+		if self.var.get('using','Defaults') == 'Defaults': self._fill_exp_constants_Defaults()
+		elif self.var.get('using') == 'May16Top': self._fill_exp_constants_May16Top()
+		for key in kwargs.keys(): self.var[key] = kwargs[key]  # Replace ones provided from kwargs
+
+	def _fill_exp_constants_Defaults(self):
 		self.sigma = self.sigma0 * self.var.get('sigmaf',1)
 		self.Nsat = self.var.get('Nsat',np.inf)
-		self.pixel = self.var.get('pixel',1)
+		self.pixel = self.var.get('pixel',1.39e-6)
 		self.Ncor = self.var.get('Ncor',1)
 		self.ODf = self.var.get('ODf',1)
-		self.trapw = self.var.get('trapw',_TRAP_OMEGA)
-		self.volume = self.var.get('volume',_TRAP_VOLUME)
+		self.trapw = self.var.get('trapw', 2 * np.pi * 23.9)
+		self.radius = self.var.get('radius', 70e-6)
+		self.width = self.var.get('width', 80e-6)
+		self.volume = self.var.get('volume', np.pi * self.radius**2 * self.width)
+
+	def _fill_exp_constants_May16Top(self):
+		self.sigma = self.sigma0 * self.var.get('sigmaf',0.5)
+		self.Nsat = self.var.get('Nsat',120)
+		self.pixel = self.var.get('pixel',1.39e-6)
+		self.Ncor = self.var.get('Ncor',1)
+		self.ODf = self.var.get('ODf',1)
+		self.trapw = self.var.get('trapw', 2 * np.pi * 23.9)
+		self.radius = self.var.get('radius', 70e-6)
+		self.width = self.var.get('width', 80e-6)
+		self.volume = self.var.get('volume', np.pi * self.radius**2 * self.width)
+
+	def _fill_exp_constants_MonthYearType(self):
+		# Must fill out required constants
+		pass
 
 	# useful conversions
 	def n2kF(self,n): return (6 * self.pi**2 * n)**(1/3)
 	def n2EF(self,n): return (self.hbar**2 * self.n2kF(n)**2) / (2 * self.mass)
-	def k2EF(self,k): return (self.hbar**2 * k**2) / (2 * self.mass)
+	def kF2EF(self,k): return (self.hbar**2 * k**2) / (2 * self.mass)
 	def n2EFHz(self,n): return self.n2EF(n) / self.h
 	def k2EFHz(self,k): return self.k2EF(k) / self.h
 

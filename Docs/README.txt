@@ -30,3 +30,4 @@ import therpy as tp
 
 ### Directory change for shell, computer specific
 cd ‘/Users/RanchoP/Documents/My Programs/Python Library’
+cd “/Users/ranchopc/Documents/My Programs/Python Library”
