@@ -1,0 +1,31 @@
+Properties (Public, defined via decorators):
+    od      --  optical density
+    app     --  atoms per pixel
+    Ii,If   --  background corrected Ii and If counts
+    si,sf   --  background corrected si and sf
+    Ii_raw  --  rotated and cropped, non background subtracted Ii, If
+    rawdata --  rawdata from file, unbinned, unrotated
+    props   --  dict of various properties used for calculations
+
+Methods (Public):
+    infoplot  -- plot crop and bg_width boundries and final od
+    plot      -- plot final od
+    set_prop  -- intelligently set properties
+    __print__ -- print all relevant information
+
+Imaging Properties (optional):
+    image info: name, path
+    preparation:
+        cropi, cropset:
+        subsample: 
+        rotate: rotation angle in degrees
+        order: list containing ['rotate','crop','subsample']
+    background: 
+        bg_width, (not yet implemented) bg_images
+        bad_light: fractions of light with wrong polarization
+    physics parameters:
+        Isat: saturation counts per camera pixel per us
+        time: imaging time in us
+        pixel: size of camera pixel onto atoms in um
+        method: one of the following {'BL','sBL','dBL'}
+        sigma, sigmaf: provide sigma in SI or sigmaf * sigma_0_Li
