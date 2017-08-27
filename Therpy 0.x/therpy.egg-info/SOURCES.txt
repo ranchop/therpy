@@ -1,0 +1,12 @@
+README.rst
+setup.py
+therpy/__init__.py
+therpy/funcs.py
+therpy/imageio.py
+therpy/sort.py
+therpy.egg-info/PKG-INFO
+therpy.egg-info/SOURCES.txt
+therpy.egg-info/Users:ranchop:Documents:Git.textClipping
+therpy.egg-info/dependency_links.txt
+therpy.egg-info/requires.txt
+therpy.egg-info/top_level.txt
