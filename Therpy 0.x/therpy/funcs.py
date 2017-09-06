@@ -2382,7 +2382,7 @@ def images_from_clipboard(df=None, x='time', params=[], image_func=Image, downlo
 
     # Fix the list of parameters
     required_params = ['name','time','image','A','B','S','download']
-    if (x not in params) and (x != 'time'): params = params + x
+    if (x not in params) and (x != 'time'): params = params + [x]
     if 'unixtime' in params: params.remove('unixtime')
 
     # Prepare DataFrame for inserting new data
@@ -3847,4 +3847,5 @@ Warnings for Users
 print('''Internal Structure of therpy has changed.
 Now all functions (except for helper functions and imageio functions) are stored at one place therpy.funcs and available on root as tp.####.
 If there are errors in your program, simply replace tp.module_name.func_name to tp.func_name.
-If you would like to go back to old therpy, use pip install therpy==0.2.4 ''')
+If some function is not present there, it must be a helper function and can be accessed via tp.funcs._____
+If you would like to go back to old therpy, use pip install therpy==0.2.5 ''')
