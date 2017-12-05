@@ -3,11 +3,11 @@ from setuptools import setup
 
 setup(
     name='therpy',
-    version='0.2.5.dev',
+    version='0.3.2',
     packages=['therpy',],
 
     # Package requirements
-    install_requires=['pyfits',''],
+    install_requires=['pyfits','tqdm','bec1db',],
 
     # metadata
     author='Parth Patel',
@@ -15,7 +15,7 @@ setup(
     license='Open Source',
 )
 
-# Development Mode -- be sure to pip uninstall therpy before turning develop mode on 
+# Development Mode
 # python setup.py develop
 # python setup.py develop --uninstall
 

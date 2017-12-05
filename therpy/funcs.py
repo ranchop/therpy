@@ -2382,7 +2382,7 @@ def images_from_clipboard(df=None, x='time', params=[], image_func=Image, downlo
 
     # Fix the list of parameters
     required_params = ['name','time','image','A','B','S','download']
-    if (x not in params) and (x != 'time'): params = params + [x]
+    if (x not in params) and (x != 'time'): params = params + x
     if 'unixtime' in params: params.remove('unixtime')
 
     # Prepare DataFrame for inserting new data
