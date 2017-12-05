@@ -76,13 +76,21 @@ def imagename2subfolder(imagename=None):
     # Special case if imagename is not provided
     if imagename is None: return 'None'
     # Default values for pattern (future version: include as an optional input)
+    # Version 1 (the default)
     re_pattern = '\d\d-\d\d-\d\d\d\d_\d\d_\d\d_\d\d'
     datetime_format = '%m-%d-%Y_%H_%M_%S'
+    # Version 2 (sometimes '01' -> ' 1')
+    re_pattern_2 = '\d\d-\d\d-\d\d\d\d_ \d_\d\d_\d\d'
+    datetime_format_2 = '%m-%d-%Y_ %H_%M_%S'
     # Find '/' in the string and remove it -- to be done
     # Extract datetime
     imagetimestr = re.findall(re_pattern, imagename)
+    imagetimestr2 = re.findall(re_pattern_2, imagename)
     if len(imagetimestr) == 1:
         imagetimestr = imagetimestr[0]
+    if len(imagetimestr2) == 1:
+        imagetimestr = imagetimestr2[0]
+        datetime_format =  datetime_format_2
     else:
         return 'None'
     try:
@@ -102,13 +110,21 @@ def imagename2subfolder_yesterday(imagename=None):
     # Special case if imagename is not provided
     if imagename is None: return 'None'
     # Default values for pattern (future version: include as an optional input)
+    # Version 1 (the default)
     re_pattern = '\d\d-\d\d-\d\d\d\d_\d\d_\d\d_\d\d'
     datetime_format = '%m-%d-%Y_%H_%M_%S'
+    # Version 2 (sometimes '01' -> ' 1')
+    re_pattern_2 = '\d\d-\d\d-\d\d\d\d_ \d_\d\d_\d\d'
+    datetime_format_2 = '%m-%d-%Y_ %H_%M_%S'
     # Find '/' in the string and remove it -- to be done
     # Extract datetime
     imagetimestr = re.findall(re_pattern, imagename)
+    imagetimestr2 = re.findall(re_pattern_2, imagename)
     if len(imagetimestr) == 1:
         imagetimestr = imagetimestr[0]
+    if len(imagetimestr2) == 1:
+        imagetimestr = imagetimestr2[0]
+        datetime_format =  datetime_format_2
     else:
         return 'None'
     try:
