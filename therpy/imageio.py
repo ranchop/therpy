@@ -88,7 +88,7 @@ def imagename2subfolder(imagename=None):
     imagetimestr2 = re.findall(re_pattern_2, imagename)
     if len(imagetimestr) == 1:
         imagetimestr = imagetimestr[0]
-    if len(imagetimestr2) == 1:
+    elif len(imagetimestr2) == 1:
         imagetimestr = imagetimestr2[0]
         datetime_format =  datetime_format_2
     else:
@@ -122,7 +122,7 @@ def imagename2subfolder_yesterday(imagename=None):
     imagetimestr2 = re.findall(re_pattern_2, imagename)
     if len(imagetimestr) == 1:
         imagetimestr = imagetimestr[0]
-    if len(imagetimestr2) == 1:
+    elif len(imagetimestr2) == 1:
         imagetimestr = imagetimestr2[0]
         datetime_format =  datetime_format_2
     else:
