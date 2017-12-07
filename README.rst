@@ -1,6 +1,6 @@
 therpy
 ******
-**Atomic physics data analysis tools.
+Atomic physics data analysis tools.
 
 Installation
 ============
