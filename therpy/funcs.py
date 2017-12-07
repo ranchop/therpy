@@ -264,6 +264,7 @@ class cst:
         # Fill in the rest
         self._fill_atomic_constants()
         self._fill_exp_constants(**kwargs)
+        self._prep_vectorized_interactions()
 
     # fill in atom specific params
     def LiD2(self):
@@ -383,9 +384,96 @@ class cst:
     def kF2EFHz(self, k):
         return self.kF2EF(k) / self.h
 
+    def EFHz2kF(self, EFHz):
+        return self.n2kF(self.EF2n(self.h*EFHz))
+
     def kT2lambdaDB(self, kT, inHz = False):
         if inHz: kT *= self.h
         return self.h / (self.twopi * self.mass * kT)**(1/2)
+
+    ## Li6 scattering lengths
+
+    def Li6_scattering_length(self, states='13', B=670):
+        """ Get the scattering length of a Li6 spin mixture
+        Li6_scattering_length(states='13', B), in units of a_0
+        """
+        if states=='12':
+            return a_12_interp(B)
+        elif states=='13':
+            return a_13_interp(B)
+        elif states=='23':
+            return a_23_interp(B)
+
+    def n2interaction_strength_one(self, n, states='13', B=670, interp=True):
+        """ Get the dimensionless interaction strength for a spin mixture
+        n21kFa(n, states, B)
+        Needs extrapolation near unitarity since a diverges
+        """
+        noninterp = 1/(self.n2kF(n) * self.Li6_scattering_length(states, B)*self.a_0)
+        if interp:
+            # set the extrapolation ranges
+            if states=='13':
+                above = [682, 687]
+                below = [692, 697]
+            elif states=='12':
+                above = [800, 805]
+                below = [812, 817]
+            elif states=='23':
+                above = [822, 828]
+                below = [843, 848]
+            Btest = np.hstack([np.linspace(*above, 100),np.linspace(*below, 100)])
+            c_ = Curve(Btest, 1/(self.n2kF(n) * self.Li6_scattering_length(states, Btest)*self.a_0))
+            def fitfun(x, a0, a1): return a0 + a1*x
+            fr, _ = c_.fit(fitfun, [0,-0.1])
+            if (B>above[1]) & (B<below[0]):
+                return fitfun(B, *fr)
+            else:
+                return noninterp
+        else:
+            return noninterp
+
+
+    def interaction_strength2EFHz(self, interaction, states='13', B=670):
+        """ Given a dimensionless interaction strength and B, find the EF needed in the box
+        """
+        return self.kF2EFHz(1/(interaction*self.Li6_scattering_length(states, B)*self.a_0))
+
+    def BEF2interaction_strength_one(self, B=670, EFHz=1e4, states='13', interp=True):
+        """
+        Needs extrapolation near unitarity since a diverges
+        """
+        noninterp = 1/(self.EFHz2kF(EFHz)* self.Li6_scattering_length(states, B)*self.a_0)
+        if interp:
+            # set the extrapolation ranges
+            if states=='13':
+                above = [682, 687]
+                below = [692, 697]
+            elif states=='23':
+                above = [800, 805]
+                below = [812, 817]
+            elif states=='12':
+                above = [822, 828]
+                below = [843, 848]
+            Btest = np.hstack([np.linspace(*above, 100),np.linspace(*below, 100)])
+            c_ = Curve(Btest, 1/(self.EFHz2kF(EFHz)* self.Li6_scattering_length(states, Btest)*self.a_0))
+            def fitfun(x, a0, a1): return a0 + a1*x
+            fr, _ = c_.fit(fitfun, [0,-0.1])
+            if (B>above[1]) & (B<below[0]):
+                return fitfun(B, *fr)
+            else:
+                return noninterp
+        else:
+            return noninterp
+
+    def interaction_strengthEF2B(self,interaction=1, EFHz=1e4, states='13'):
+        ''' Fails currently'''
+        def funSolve(B): return B - self.BEF2interaction_strength(B=B, EFHz=EFHz,states=states)
+        return scipy.optimize.brentq(funSolve, 500,990)
+
+    def _prep_vectorized_interactions(self):
+        self.BEF2interaction_strength = np.vectorize(self.BEF2interaction_strength_one)
+        self.n2interaction_strength = np.vectorize(self.n2interaction_strength_one)
+
 
     ## Very specific conversions
     # Fermi-Surface conversions
@@ -3828,6 +3916,25 @@ if not os.path.isfile(p_):
 precompiled_data_EoS_Density_Generator = pickle.load( open( p_, "rb" ) )
 
 '''
+Download Li6 scattering lengths
+'''
+p_ = getpath('Projects','Data','EoS','Li6_scattering_length_jochim_julienne_2013_Data4Python.p')
+if not os.path.isfile(p_):
+    print("Downloading scattering lengths")
+    url = "https://www.dropbox.com/s/i01berhdhavh882/scatteringLi6.p?dl=1"
+    u = urllib.request.urlopen(url)
+    data = u.read()
+    u.close()
+    # Create folder
+    os.makedirs(os.path.split(p_)[0], exist_ok=True)
+    with open(p_, "wb") as f :
+        f.write(data)
+scattering_length_data = pickle.load( open( p_, "rb" ) )
+a_12_interp = scipy.interpolate.interp1d(scattering_length_data['B'], scattering_length_data['a12'])
+a_23_interp = scipy.interpolate.interp1d(scattering_length_data['B'], scattering_length_data['a23'])
+a_13_interp = scipy.interpolate.interp1d(scattering_length_data['B'], scattering_length_data['a13'])
+
+'''
 Initialize cst_## objects
 '''
 cst_LiD2 = cst(atom='LiD2')
@@ -3844,8 +3951,8 @@ cst_.ideal_gas_density_prefactor = 1/(6*np.pi**2) * (2*cst_.mass/cst_.hbar**2)**
 '''
 Warnings for Users
 '''
-print('''Internal Structure of therpy has changed.
-Now all functions (except for helper functions and imageio functions) are stored at one place therpy.funcs and available on root as tp.####.
-If there are errors in your program, simply replace tp.module_name.func_name to tp.func_name.
-If some function is not present there, it must be a helper function and can be accessed via tp.funcs._____
-If you would like to go back to old therpy, use pip install therpy==0.2.5 ''')
+# print('''Internal Structure of therpy has changed.
+# Now all functions (except for helper functions and imageio functions) are stored at one place therpy.funcs and available on root as tp.####.
+# If there are errors in your program, simply replace tp.module_name.func_name to tp.func_name.
+# If some function is not present there, it must be a helper function and can be accessed via tp.funcs._____
+# If you would like to go back to old therpy, use pip install therpy==0.2.5 ''')
