@@ -30,7 +30,6 @@ __all__ = [
 import numpy as np
 import pandas as pd
 import os
-import os.path
 import time
 import collections
 import urllib.request
@@ -213,12 +212,13 @@ Fourier Transform
 '''
 def fourier_transform(x, y, k=None):
     '''
-    Fourier Transform : f(k) = int_dx {f(x)*exp(-ikx) * 1/sqrt(2 pi)}
+    Fourier Transform : f(k) = int_dx {f(x)*exp(-ikx)}
+    Normalization : Multiply by 2 / L for proper normalization
     inputs (x, y, k=None) returns (k, f(k))
     default k = 100 points from k = 0 to max_k/2
     '''
     if k is None: k = 2*np.pi * np.fft.rfftfreq(y.shape[0], np.diff(x)[0]) / 2
-    return [k, np.array([np.trapz(y * np.exp(-1j * ki * x) , x) for ki in k]) / (2*np.pi)**(1/2)]
+    return [k, np.array([np.trapz(y * np.exp(-1j * ki * x) , x) for ki in k])]
 
 def real_fast_fourier_transform(x, y):
     '''
@@ -2884,7 +2884,7 @@ class curve_fit:
         ### Process guess -- generate guess_keys, guess_values, guess_bounds, guess_units
         # the order of keys will be determined by the order of fitfun input order
         if type(guess) == dict:
-            guess_keys = [k for k in fitfun.__code__.co_varnames[1:] if k in list(guess.keys())]
+            guess_keys = [k for k in fitfun.__code__.co_varnames[1:fitfun.__code__.co_argcount] if k in list(guess.keys())]
             temp_ = [temp_process_guess_item(guess[k]) for k in guess_keys]
         elif type(guess) in [list, tuple, np.ndarray]:
             guess_keys = fitfun.__code__.co_varnames[1:1+len(guess)]
@@ -2897,7 +2897,7 @@ class curve_fit:
         guess_values, guess_bounds, guess_units = np.array([i[0] for i in temp_]), np.array([i[1] for i in temp_]).T, [i[2] for i in temp_]
 
         ### Extract all fixed items, including provided and default ones
-        fixed_func_defaults = {k:v for k, v in zip(fitfun.__code__.co_varnames[-len(fitfun.__defaults__):], fitfun.__defaults__)}
+        fixed_func_defaults = {k:v for k, v in zip(fitfun.__code__.co_varnames[-len(fitfun.__defaults__):fitfun.__code__.co_argcount], fitfun.__defaults__)}
         fixed_dict = {**fixed_func_defaults, **fixed}
         for k in guess_keys: fixed_dict.pop(k, None)
 
@@ -2919,7 +2919,7 @@ class curve_fit:
         fitresults_dict = dict(FitValue=fv_, FitError=fe_, Units=guess_units, Guess=guess_values, LowerBound=guess_bounds[0], UpperBound=guess_bounds[1])
         fitresults_df = pd.DataFrame(fitresults_dict, index=guess_keys, columns=['FitValue','FitError','Units','Guess','LowerBound','UpperBound'])
         for k, v in fixed_dict.items(): fitresults_df.loc[k] = [v, 0, None, v, v, v]
-        fitresults_df = fitresults_df.loc[fitfun.__code__.co_varnames[1:], :] # sort the index by function input list
+        fitresults_df = fitresults_df.loc[fitfun.__code__.co_varnames[1:fitfun.__code__.co_argcount], :] # sort the index by function input list
         fitresults_df['FitError%'] = np.nan_to_num(np.abs(fitresults_df['FitError'] / fitresults_df['FitValue'])) * 100
 
         ### Store results to self
