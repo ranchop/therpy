@@ -9,7 +9,13 @@ To install the package use:
 
 .. code:: shell
 
-    pip install therpy --user
+    pip install therpy
+
+To remove the package use:
+
+.. code:: shell
+
+    pip uninstall therpy
 
 If that doesn't work, clone the repository using `git clone` and then run:
 
@@ -17,6 +23,7 @@ If that doesn't work, clone the repository using `git clone` and then run:
 
     python setup.py build
     python setup.py install
+
 
 
 Usage
