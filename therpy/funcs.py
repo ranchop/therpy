@@ -8,7 +8,7 @@ __all__ = [
         # C3 : Special Physics Related Functions & Classes
             'cst', 'FermiFunction', 'ThomasFermi_harmonic', 'FermiDirac',
             'betamu2n', 'RabiResonance', 'thermal_wavelength', 'ldB',
-            'density_ideal', 'density_virial', 'density_unitary',
+            'density_ideal', 'density_virial', 'density_unitary', 'density_unitary_hybrid',
         # C4 : Special Experiment Related Functions  & Classes : box_edge functions
             'ThomasFermiCentering', 'FermiDiracFit', 'box_sharpness', 'interp_od',
             'volt2rabi', 'rabi2volt',
@@ -690,6 +690,11 @@ def density_unitary(kT, mu):
     if mu/kT > 4: return cst_.EF2n(mu / precompiled_data_EoS_Density_Generator[0](kT/mu), neg=True)
     if mu/kT > -0.5: return cst_.EF2n(mu / precompiled_data_EoS_Density_Generator[1](mu/kT), neg=True)
     return density_virial(kT, mu)
+
+def density_unitary_hybrid(z, kT_kHz=0, mu0_kHz=1, trap_f=23.9, z0=0, fudge=1, offset=0, gradient=0):
+    trap_w = twopi * trap_f
+    mu = (mu0_kHz * kHz) - (1/2 * cst_LiD2.mass * (trap_w**2) * (z-z0)**2)
+    return density_unitary(kT_kHz * kHz, mu) * fudge + offset + gradient * (z-z0)
 
 
 ################################################################################
@@ -2011,7 +2016,7 @@ def atom_num_filter(df, keep=0.10, offset=0.0, using='ABS', display=False, plot=
     Returns the list of ax object
     '''
     # Filter
-    df.total_atoms = None
+    df.total_atoms = 0
     for n,r in df[df.download].iterrows():
         df.loc[n, 'total_atoms'] = r.image.total_atoms
     median_numbers = np.median(df[df.download].total_atoms)
@@ -2039,9 +2044,9 @@ def atom_num_filter(df, keep=0.10, offset=0.0, using='ABS', display=False, plot=
                   title='Fudge {}; Mean {:.3f} million'.format(fudge, mean_numbers/1e6))
 
         # Histogram plot
-        ax[1].hist(df[df.use].total_atoms.values / 1e6)
+        ax[1].hist(df[df.use].total_atoms.values / 1e6, bins=10)
         ax[1].axvline(mean_numbers/1e6, linestyle='-', c='k', alpha=0.7)
-        ax[1].set(xlabel='Time (minutes)', ylabel='Atom Number (million)',
+        ax[1].set(xlabel='Atom Number (million)', ylabel='Counts',
                   title=r'Atom Num {:.3f} $\pm$ {:.3f} million'.format(mean_numbers/1e6, std_numbers/1e6))
 
     return ax
@@ -3947,6 +3952,10 @@ cst_.ldB_prefactor = ((cst_.twopi * cst_.hbar**2)/(cst_.mass))**(1/2)
 cst_.xi = 0.37
 cst_.virial_coef = [1, 3*2**(1/2)/8, -0.29095295, 0.065]
 cst_.ideal_gas_density_prefactor = 1/(6*np.pi**2) * (2*cst_.mass/cst_.hbar**2)**(3/2)
+twopi = 2 * np.pi
+pi = np.pi
+kHz = 1e3 * cst_.h
+
 
 '''
 Warnings for Users

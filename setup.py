@@ -11,7 +11,7 @@ setup(
 
     # metadata
     author='Parth Patel',
-    author_email='ranchop@gmail.com',
+    author_email='ranchop09@gmail.com',
     license='Open Source',
 )
 
