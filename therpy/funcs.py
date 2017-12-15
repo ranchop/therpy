@@ -15,8 +15,9 @@ __all__ = [
         # C5 : Image Analysis Related
             'get_cropi', 'get_roi', 'get_od', 'fix_od', 'get_usable_pixels', 'com',
             'plot_crop', 'Image', 'XSectionHybrid', 'Hybrid_Image', 'atom_num_filter',
-        # C6 : Datatype, I/O related functions : bin_data
+        # C6 : Datatype, I/O related functions :
             'getFileList', 'getpath', 'dictio', 'sdict', 'Curve', 'images_from_clipboard',
+            'bin_data',
         # C7 : Numerical Functions :
             'numder_poly', 'numder_gaussian_filter', 'subsampleavg', 'subsample2D',
             'binbyx', 'savitzky_golay', 'surface_fit', 'curve_fit',
@@ -2533,6 +2534,51 @@ def images_from_clipboard(df=None, x='time', params=[], image_func=Image, downlo
         IPython.display.display(df.head(3))
 
     return df
+
+'''
+bin data
+========
+'''
+class bin_data:
+    '''
+    Binning data with same x values
+    ===============================
+
+    Properties : self.xxxx
+        xi, yi
+        x : unique values of xi in increasing order
+        y : mean value at x
+        ynum : number of points at x
+        ybin : list of points at x
+        ystd : np.std at x
+        yerr : ystd/sqrt(ynum), standard error of the mean
+        data : (x, y)
+        std : (x, y, ystd)
+        err : (x, y, yerr)
+        all : (xi, yi)
+    '''
+    def __init__(self, xi, yi, ):
+        x = np.unique(xi)
+        ybin = [yi[xi == x_i] for x_i in x]
+        ynum = np.array([len(y_i) for y_i in ybin])
+        y = np.array([np.mean(y_i) for y_i in ybin])
+        ystd = np.array([np.std(y_i) for y_i in ybin])
+        yerr = ystd / np.sqrt(ynum)
+
+        # Store
+        self.xi = xi
+        self.yi = yi
+        self.x = x
+        self.y = y
+        self.ybin = ybin
+        self.ynum = ynum
+        self.ystd = ystd
+        self.yerr = yerr
+        self.data = (x, y)
+        self.std = (x, y, ystd)
+        self.err = (x, y, yerr)
+        self.all = (xi, yi)
+
 
 ################################################################################
 ################################################################################
