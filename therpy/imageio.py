@@ -39,6 +39,7 @@ def imagename2alldata(imagename):
 def backuploc():
     # Get user home directory
     basepath = os.path.expanduser('~')
+    basepath = '/Volumes/Brain'
     # Find out the os
     from sys import platform as _platform
     # Platform dependent storage
