@@ -1179,8 +1179,8 @@ Image Class
 '''
 class Image:
     '''Get image name and path, start self.var'''
-    def __init__(self, name=None, path=None, od=None, **kwargs):
-        Default_Image_Set = dict(name='Not Provided', path='Not Provided',
+    def __init__(self, name=None, path=None, lab='bec1', od=None, **kwargs):
+        Default_Image_Set = dict(name='Not Provided', path='Not Provided', lab='bec1'
                                 center_x=1, center_y=1, width=1000000, height=1000000,
                                 subsample=1, rotate=0, rotate_method='bilinear',
                                 prep_order=['rotate','crop','subsample'],
@@ -1203,7 +1203,7 @@ class Image:
         # Use path if provided, else use name and find path
         if (type(path) is str) and os.path.exists(path):
             self.var['path'], self.var['name'] = path, os.path.splitext(os.path.split(path)[1])[0]
-        elif type(name) is str: self.var['name'], self.var['path'] = name, imageio.imagename2imagepath(name)
+        elif type(name) is str: self.var['name'], self.var['path'] = name, imageio.imagename2imagepath(name, lab)
         elif od is not None:
             self.var['od'] = od
             self.var['Level_Selector'][0] = [] # Disable Level, 0 computations
@@ -1284,6 +1284,9 @@ class Image:
 
     @property
     def name(self,): return self.var.get('name')
+
+    @property
+    def lab(self,): return self.var.get('lab')
 
     @property
     def path(self,): return self.var.get('path')
@@ -2452,7 +2455,7 @@ class Curve:
 images_from_clipboard
 =====================
 '''
-def images_from_clipboard(df=None, x='time', params=[], image_func=Image, download='ABS', display=False, verify=False, keep_all=False):
+def images_from_clipboard(df=None, x='time', params=[], image_func=Image, lab='bec1', download='ABS', display=False, verify=False, keep_all=False):
     '''
     Get a list of images from clipboard and desired experimental parameters
     Inputs
@@ -2506,7 +2509,7 @@ def images_from_clipboard(df=None, x='time', params=[], image_func=Image, downlo
     download = list(download)
     df.download = (df.A & ('A' in download)) | (df.B & ('B' in download)) | (df.S & ('S' in download))
     for n in tqdm(df.index.values):
-        if df.loc[n,'download'] and (type(df.loc[n,'image']) != image_func): df.loc[n, 'image'] = image_func(n)
+        if df.loc[n,'download'] and (type(df.loc[n,'image']) != image_func): df.loc[n, 'image'] = image_func(n, lab)
 
     # Remove entries that are not in download
     if not keep_all:
@@ -3243,8 +3246,12 @@ class AbsImage():
         return self.var.get('name', 'NotGiven')
 
     @property
+    def lab(self):
+        return self.var.get('lab')
+
+    @property
     def path(self):
-        return imageio.imagename2imagepath(self.name)
+        return imageio.imagename2imagepath(self.name, self.lab)
 
     @property
     def rawdata(self):
