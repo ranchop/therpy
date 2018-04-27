@@ -57,7 +57,7 @@ def backuploc():
 
 
 # If the extension is not provided, add the default of .fits
-def fixentension(filename):
+def fixextension(filename):
     # Add the .fits extension if not present
     imageformat = os.path.splitext(filename)[1]
     if imageformat == '': filename += '.fits'
@@ -82,15 +82,22 @@ def imagename2subfolder(imagename=None):
     # Version 2 (sometimes '01' -> ' 1')
     re_pattern_2 = '\d\d-\d\d-\d\d\d\d_ \d_\d\d_\d\d'
     datetime_format_2 = '%m-%d-%Y_ %H_%M_%S'
+    # Version 3 (Fermi3 Guppy format)
+    re_pattern_3 = '\d\d\d\d-\d\d-\d\d_\d\d-\d\d-\d\d'
+    datetime_format_3 = '%Y-%m-%d_%H-%M-%S'
     # Find '/' in the string and remove it -- to be done
     # Extract datetime
     imagetimestr = re.findall(re_pattern, imagename)
     imagetimestr2 = re.findall(re_pattern_2, imagename)
+    imagetimestr3 = re.findall(re_pattern_3, imagename)
     if len(imagetimestr) == 1:
         imagetimestr = imagetimestr[0]
     elif len(imagetimestr2) == 1:
         imagetimestr = imagetimestr2[0]
         datetime_format =  datetime_format_2
+    elif len(imagetimestr3) == 1:
+        imagetimestr = imagetimestr3[0]
+        datetime_format =  datetime_format_3
     else:
         return 'None'
     try:
@@ -141,11 +148,11 @@ def imagename2subfolder_yesterday(imagename=None):
 
 
 # imagedata = imagename2imagepath(imagename)
-def imagename2imagepath(imagename, redownload=False):
+def imagename2imagepath(imagename, lab='bec1', redownload=False):
     # Extract the subfolder path
     subpath = imagename2subfolder(imagename)
     # Fix the extension
-    imagename = fixentension(imagename)
+    imagename = fixextension(imagename)
     # Check if it exists on temporary location
     imagepath_backup = os.path.join(backuploc(), subpath, imagename)
     if os.path.exists(imagepath_backup) and not redownload:
