@@ -6,7 +6,7 @@ import os
 import datetime
 from datetime import timedelta
 import re
-import pyfits
+import astropy.io.fits as pyfits
 import matplotlib.pyplot as pp
 from shutil import copyfile
 import warnings
@@ -36,7 +36,7 @@ def imagename2alldata(imagename):
 
 ## Low level functions
 # get path to store downloaded images
-def backuploc():
+def backuploc(lab='bec1'):
     # Get user home directory
     basepath = os.path.expanduser('~')
     # Find out the os
@@ -44,10 +44,10 @@ def backuploc():
     # Platform dependent storage
     if _platform == 'darwin':
         # Mac OS X
-        backuppath = os.path.join(basepath, 'Documents', 'My Programs', 'Raw Imagedata Temporary')
+        backuppath = os.path.join(basepath, 'Documents', 'My Programs', 'Raw Imagedata Temporary',lab)
     elif _platform == 'win32' or _platform == 'cygwin':
         # Windows
-        backuppath = os.path.join(basepath, 'Documents', 'My Programs', 'Raw Imagedata Temporary')
+        backuppath = os.path.join(basepath, 'Documents', 'My Programs', 'Raw Imagedata Temporary',lab)
     else:
         # Unknown platform
         return None
@@ -123,15 +123,22 @@ def imagename2subfolder_yesterday(imagename=None):
     # Version 2 (sometimes '01' -> ' 1')
     re_pattern_2 = '\d\d-\d\d-\d\d\d\d_ \d_\d\d_\d\d'
     datetime_format_2 = '%m-%d-%Y_ %H_%M_%S'
+    # Version 3 (Fermi3 Guppy format)
+    re_pattern_3 = '\d\d\d\d-\d\d-\d\d_\d\d-\d\d-\d\d'
+    datetime_format_3 = '%Y-%m-%d_%H-%M-%S'
     # Find '/' in the string and remove it -- to be done
     # Extract datetime
     imagetimestr = re.findall(re_pattern, imagename)
     imagetimestr2 = re.findall(re_pattern_2, imagename)
+    imagetimestr3 = re.findall(re_pattern_3, imagename)
     if len(imagetimestr) == 1:
         imagetimestr = imagetimestr[0]
     elif len(imagetimestr2) == 1:
         imagetimestr = imagetimestr2[0]
         datetime_format =  datetime_format_2
+    elif len(imagetimestr3) == 1:
+        imagetimestr = imagetimestr3[0]
+        datetime_format =  datetime_format_3
     else:
         return 'None'
     try:
@@ -154,17 +161,23 @@ def imagename2imagepath(imagename, lab='bec1', redownload=False):
     # Fix the extension
     imagename = fixextension(imagename)
     # Check if it exists on temporary location
-    imagepath_backup = os.path.join(backuploc(), subpath, imagename)
+    imagepath_backup = os.path.join(backuploc(lab), subpath, imagename)
     if os.path.exists(imagepath_backup) and not redownload:
         return imagepath_backup
     # Find the base path depending on the platform
     from sys import platform as _platform
     if _platform == 'darwin':
         # Mac OS X
-        basepath = '/Volumes/Raw Data/Images'
+        if lab=='bec1':
+            basepath = '/Volumes/Raw Data/Images'
+        elif lab=='fermi3':
+            basepath = '/Volumes/Raw Data/Fermi3/Images'
     elif _platform == 'win32' or _platform == 'cygwin':
         # Windows
-        basepath = '\\\\18.62.1.253\\Raw Data\\Images'
+        if lab=='bec1':
+            basepath = '\\\\18.62.1.253\\Raw Data\\Images'
+        elif lab=='fermi3':
+            basepath = '\\\\18.62.1.253\\Raw Data\\Fermi3\\Images'
     else:
         # Unknown platform
         basepath = None

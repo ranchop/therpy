@@ -1180,7 +1180,7 @@ Image Class
 class Image:
     '''Get image name and path, start self.var'''
     def __init__(self, name=None, path=None, lab='bec1', od=None, **kwargs):
-        Default_Image_Set = dict(name='Not Provided', path='Not Provided', lab='bec1'
+        Default_Image_Set = dict(name='Not Provided', path='Not Provided', lab='bec1',
                                 center_x=1, center_y=1, width=1000000, height=1000000,
                                 subsample=1, rotate=0, rotate_method='bilinear',
                                 prep_order=['rotate','crop','subsample'],
@@ -1199,6 +1199,7 @@ class Image:
         self.var = {**Default_Image_Set, **kwargs}
         self.var['Level_Selector'] = list(Level_Selector_Image)
         self.var['recalc'] = [True]*len(self.var['Level_Selector'])
+        self.var['lab'] = lab
 
         # Use path if provided, else use name and find path
         if (type(path) is str) and os.path.exists(path):
