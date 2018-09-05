@@ -1187,7 +1187,7 @@ class Image:
                                 fudge=1, bg_width=0, bg_order=1, bad_light=0,
                                 Isat=1, time=1, pixel=1e-6, detuning=0,
                                 od_method='log', sigmaf=1, memory_saver=False,
-                                lookup_table_version='v1')
+                                lookup_table_version='v1', atom='LiD2')
 
         Level_Selector_Image = [['name','path','center_x','center_y','center',
                                  'width','height','cropset','cropi','subsample',
@@ -1362,10 +1362,19 @@ class Image:
     def od_method(self,): return self.var.get('od_method')
 
     @property
+    def atom(self,): return self.var.get('atom')
+
+    @property
     def sigmaf(self,): return self.var.get('sigmaf')
 
     @property
-    def sigma(self,): return self.var.get('sigma', cst_.sigma0 * self.sigmaf)
+    def sigma(self,):
+        if self.atom=='NaD2':
+            s = cst_NaD2.sigma0
+        else:
+            s = cst_.sigma0
+
+        return self.var.get('sigma', s * self.sigmaf)
 
     @property
     def memory_saver(self,): return self.var.get('memory_saver')
@@ -1490,7 +1499,7 @@ class Image:
         ax_cb = divider.new_horizontal(size="8%", pad=0.05)
         fig1 = ax[0].get_figure()
         fig1.add_axes(ax_cb)
-        im = ax[0].imshow(np.log(alldata[1] / alldata[0]), clim = [self.od_raw.min(), self.od_raw.max()], origin='lower')
+        with np.errstate(divide='ignore', invalid='ignore'): im = ax[0].imshow(np.log(alldata[1] / alldata[0]), clim = [self.od_raw.min(), self.od_raw.max()], origin='lower')
         plt.colorbar(im, cax=ax_cb)
         ax[0].plot(x, y, 'w-', alpha=0.5)
         ax[0].set(title='Bare Image')
