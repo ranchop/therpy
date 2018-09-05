@@ -6,10 +6,11 @@ import os
 import datetime
 from datetime import timedelta
 import re
-import pyfits
+import astropy.io.fits as pyfits
 import matplotlib.pyplot as pp
 from shutil import copyfile
 import warnings
+import paramiko
 
 
 ## High Level Functions
@@ -36,7 +37,7 @@ def imagename2alldata(imagename):
 
 ## Low level functions
 # get path to store downloaded images
-def backuploc():
+def backuploc(lab='bec1'):
     # Get user home directory
     basepath = os.path.expanduser('~')
     # Find out the os
@@ -44,10 +45,10 @@ def backuploc():
     # Platform dependent storage
     if _platform == 'darwin':
         # Mac OS X
-        backuppath = os.path.join(basepath, 'Documents', 'My Programs', 'Raw Imagedata Temporary')
+        backuppath = os.path.join(basepath, 'Documents', 'My Programs', 'Raw Imagedata Temporary',lab)
     elif _platform == 'win32' or _platform == 'cygwin':
         # Windows
-        backuppath = os.path.join(basepath, 'Documents', 'My Programs', 'Raw Imagedata Temporary')
+        backuppath = os.path.join(basepath, 'Documents', 'My Programs', 'Raw Imagedata Temporary',lab)
     else:
         # Unknown platform
         return None
@@ -57,7 +58,7 @@ def backuploc():
 
 
 # If the extension is not provided, add the default of .fits
-def fixentension(filename):
+def fixextension(filename):
     # Add the .fits extension if not present
     imageformat = os.path.splitext(filename)[1]
     if imageformat == '': filename += '.fits'
@@ -72,7 +73,7 @@ def backupimage(imagepath_original, imagepath_backup):
 
 
 # string for subfolder = imagename2subfolder( string for image name )
-def imagename2subfolder(imagename=None):
+def imagename2subfolder(imagename=None, sftp=False):
     # Special case if imagename is not provided
     if imagename is None: return 'None'
     # Default values for pattern (future version: include as an optional input)
@@ -82,15 +83,22 @@ def imagename2subfolder(imagename=None):
     # Version 2 (sometimes '01' -> ' 1')
     re_pattern_2 = '\d\d-\d\d-\d\d\d\d_ \d_\d\d_\d\d'
     datetime_format_2 = '%m-%d-%Y_ %H_%M_%S'
+    # Version 3 (Fermi3 Guppy format)
+    re_pattern_3 = '\d\d\d\d-\d\d-\d\d_\d\d-\d\d-\d\d'
+    datetime_format_3 = '%Y-%m-%d_%H-%M-%S'
     # Find '/' in the string and remove it -- to be done
     # Extract datetime
     imagetimestr = re.findall(re_pattern, imagename)
     imagetimestr2 = re.findall(re_pattern_2, imagename)
+    imagetimestr3 = re.findall(re_pattern_3, imagename)
     if len(imagetimestr) == 1:
         imagetimestr = imagetimestr[0]
     elif len(imagetimestr2) == 1:
         imagetimestr = imagetimestr2[0]
         datetime_format =  datetime_format_2
+    elif len(imagetimestr3) == 1:
+        imagetimestr = imagetimestr3[0]
+        datetime_format =  datetime_format_3
     else:
         return 'None'
     try:
@@ -101,12 +109,16 @@ def imagename2subfolder(imagename=None):
     imageyear = imagetime.strftime('%Y')
     imagemonth = imagetime.strftime('%Y-%m')
     imagedate = imagetime.strftime('%Y-%m-%d')
-    subfolder = os.path.join(imageyear, imagemonth, imagedate)
+    if sftp:
+        subfolder = imageyear+'/'+imagemonth+'/'+imagedate
+    else:
+        subfolder = os.path.join(imageyear, imagemonth, imagedate)
+
     return subfolder
 
 
 # string for subfolder = imagename2subfolder( string for image name )
-def imagename2subfolder_yesterday(imagename=None):
+def imagename2subfolder_yesterday(imagename=None, sftp='False'):
     # Special case if imagename is not provided
     if imagename is None: return 'None'
     # Default values for pattern (future version: include as an optional input)
@@ -116,15 +128,22 @@ def imagename2subfolder_yesterday(imagename=None):
     # Version 2 (sometimes '01' -> ' 1')
     re_pattern_2 = '\d\d-\d\d-\d\d\d\d_ \d_\d\d_\d\d'
     datetime_format_2 = '%m-%d-%Y_ %H_%M_%S'
+    # Version 3 (Fermi3 Guppy format)
+    re_pattern_3 = '\d\d\d\d-\d\d-\d\d_\d\d-\d\d-\d\d'
+    datetime_format_3 = '%Y-%m-%d_%H-%M-%S'
     # Find '/' in the string and remove it -- to be done
     # Extract datetime
     imagetimestr = re.findall(re_pattern, imagename)
     imagetimestr2 = re.findall(re_pattern_2, imagename)
+    imagetimestr3 = re.findall(re_pattern_3, imagename)
     if len(imagetimestr) == 1:
         imagetimestr = imagetimestr[0]
     elif len(imagetimestr2) == 1:
         imagetimestr = imagetimestr2[0]
         datetime_format =  datetime_format_2
+    elif len(imagetimestr3) == 1:
+        imagetimestr = imagetimestr3[0]
+        datetime_format =  datetime_format_3
     else:
         return 'None'
     try:
@@ -136,47 +155,90 @@ def imagename2subfolder_yesterday(imagename=None):
     imageyear = imagetime.strftime('%Y')
     imagemonth = imagetime.strftime('%Y-%m')
     imagedate = imagetime.strftime('%Y-%m-%d')
-    subfolder = os.path.join(imageyear, imagemonth, imagedate)
+    if sftp:
+        subfolder = imageyear+'/'+imagemonth+'/'+imagedate
+    else:
+        subfolder = os.path.join(imageyear, imagemonth, imagedate)
     return subfolder
 
 
 # imagedata = imagename2imagepath(imagename)
-def imagename2imagepath(imagename, redownload=False):
+def imagename2imagepath(imagename, lab='bec1', redownload=False):
     # Extract the subfolder path
     subpath = imagename2subfolder(imagename)
     # Fix the extension
-    imagename = fixentension(imagename)
+    imagename = fixextension(imagename)
     # Check if it exists on temporary location
-    imagepath_backup = os.path.join(backuploc(), subpath, imagename)
+    imagepath_backup = os.path.join(backuploc(lab), subpath, imagename)
     if os.path.exists(imagepath_backup) and not redownload:
         return imagepath_backup
     # Find the base path depending on the platform
     from sys import platform as _platform
     if _platform == 'darwin':
         # Mac OS X
-        basepath = '/Volumes/Raw Data/Images'
+        if lab=='bec1':
+            basepath = '/Volumes/Raw Data/Images'
+        elif lab=='fermi3':
+            basepath = '/Volumes/Raw Data/Fermi3/Images'
     elif _platform == 'win32' or _platform == 'cygwin':
         # Windows
-        basepath = '\\\\18.62.1.253\\Raw Data\\Images'
+        if lab=='bec1':
+            basepath = '\\\\18.62.1.253\\Raw Data\\Images'
+        elif lab=='fermi3':
+            basepath = '\\\\18.62.1.253\\Raw Data\\Fermi3\\Images'
     else:
         # Unknown platform
         basepath = None
     # Check if server is connected
-    if os.path.exists(basepath) is False:
-        raise FileNotFoundError('Server NOT connected! and file was not found at {}'.format(imagepath_backup))
-    # Find the fullpath to the image
-    imagepath = os.path.join(basepath, subpath, imagename)
-    # Check if file exists
-    if os.path.exists(imagepath) is False:
-        imagepath_today = imagepath
-        subpath = imagename2subfolder_yesterday(imagename)
+    if os.path.exists(basepath):
+        # Find the fullpath to the image
         imagepath = os.path.join(basepath, subpath, imagename)
+        # Check if file exists
         if os.path.exists(imagepath) is False:
-            raise FileNotFoundError(
-                'Image NOT present on the server: Possibly invalid filename or folder location? Not found at : {} and {}'.format(
-                    imagepath_today, imagepath))
-    # Copy file to backup location
-    backupimage(imagepath, imagepath_backup)
+            imagepath_today = imagepath
+            subpath = imagename2subfolder_yesterday(imagename)
+            imagepath = os.path.join(basepath, subpath, imagename)
+            if os.path.exists(imagepath) is False:
+                raise FileNotFoundError(
+                    'Image NOT present on the server: Possibly invalid filename or folder location? Not found at : {} and {}'.format(
+                        imagepath_today, imagepath))
+        # Copy file to backup location
+        backupimage(imagepath, imagepath_backup)
+
+    else:# use SFTP to transfer the file
+        print('Server NOT connected!')
+        try:
+            ssh = paramiko.SSHClient()
+            ssh.load_system_host_keys()
+            ssh.connect('18.62.1.253', username='bec1admin', password='m4rt1niscool')
+            sftp = ssh.open_sftp()
+        except:
+            raise IOError('Connection refused')
+
+        if lab=='bec1':
+            basepath = 'Raw Data/Images'
+        elif lab=='fermi3':
+            basepath = 'Raw Data/Fermi3/Images'
+
+        try: # check if image taken today
+            imagepath_today = basepath+'/'+ subpath+'/'+ imagename
+            sftp.stat(imagepath_today)
+            imagepath = imagepath_today
+        except:
+            try: # check if image taken yesterday
+                imagepath_yesterday = basepath+'/'+ subpath+'/'+ imagename
+                sftp.stat(imagepath_yesterday)
+                imagepath = imagepath_yesterday
+            except: #raise error if no image
+                raise FileNotFoundError(
+                    'Image NOT present on the server: Possibly invalid filename or folder location? Not found at : {} and {}'.format(
+                        imagepath_today, imagepath))
+
+        if not os.path.exists(os.path.join(backuploc(lab), subpath)):
+            os.makedirs(os.path.join(backuploc(lab), subpath))
+        sftp.get(imagepath,imagepath_backup)
+        sftp.close()
+
     # Return the backup path
     return imagepath_backup
 
