@@ -10,6 +10,7 @@ import astropy.io.fits as pyfits
 import matplotlib.pyplot as pp
 from shutil import copyfile
 import warnings
+import paramiko
 
 
 ## High Level Functions
@@ -72,7 +73,7 @@ def backupimage(imagepath_original, imagepath_backup):
 
 
 # string for subfolder = imagename2subfolder( string for image name )
-def imagename2subfolder(imagename=None):
+def imagename2subfolder(imagename=None, sftp=False):
     # Special case if imagename is not provided
     if imagename is None: return 'None'
     # Default values for pattern (future version: include as an optional input)
@@ -108,12 +109,16 @@ def imagename2subfolder(imagename=None):
     imageyear = imagetime.strftime('%Y')
     imagemonth = imagetime.strftime('%Y-%m')
     imagedate = imagetime.strftime('%Y-%m-%d')
-    subfolder = os.path.join(imageyear, imagemonth, imagedate)
+    if sftp:
+        subfolder = imageyear+'/'+imagemonth+'/'+imagedate
+    else:
+        subfolder = os.path.join(imageyear, imagemonth, imagedate)
+
     return subfolder
 
 
 # string for subfolder = imagename2subfolder( string for image name )
-def imagename2subfolder_yesterday(imagename=None):
+def imagename2subfolder_yesterday(imagename=None, sftp='False'):
     # Special case if imagename is not provided
     if imagename is None: return 'None'
     # Default values for pattern (future version: include as an optional input)
@@ -150,7 +155,10 @@ def imagename2subfolder_yesterday(imagename=None):
     imageyear = imagetime.strftime('%Y')
     imagemonth = imagetime.strftime('%Y-%m')
     imagedate = imagetime.strftime('%Y-%m-%d')
-    subfolder = os.path.join(imageyear, imagemonth, imagedate)
+    if sftp:
+        subfolder = imageyear+'/'+imagemonth+'/'+imagedate
+    else:
+        subfolder = os.path.join(imageyear, imagemonth, imagedate)
     return subfolder
 
 
@@ -182,21 +190,55 @@ def imagename2imagepath(imagename, lab='bec1', redownload=False):
         # Unknown platform
         basepath = None
     # Check if server is connected
-    if os.path.exists(basepath) is False:
-        raise FileNotFoundError('Server NOT connected! and file was not found at {}'.format(imagepath_backup))
-    # Find the fullpath to the image
-    imagepath = os.path.join(basepath, subpath, imagename)
-    # Check if file exists
-    if os.path.exists(imagepath) is False:
-        imagepath_today = imagepath
-        subpath = imagename2subfolder_yesterday(imagename)
+    if os.path.exists(basepath):
+        # Find the fullpath to the image
         imagepath = os.path.join(basepath, subpath, imagename)
+        # Check if file exists
         if os.path.exists(imagepath) is False:
-            raise FileNotFoundError(
-                'Image NOT present on the server: Possibly invalid filename or folder location? Not found at : {} and {}'.format(
-                    imagepath_today, imagepath))
-    # Copy file to backup location
-    backupimage(imagepath, imagepath_backup)
+            imagepath_today = imagepath
+            subpath = imagename2subfolder_yesterday(imagename)
+            imagepath = os.path.join(basepath, subpath, imagename)
+            if os.path.exists(imagepath) is False:
+                raise FileNotFoundError(
+                    'Image NOT present on the server: Possibly invalid filename or folder location? Not found at : {} and {}'.format(
+                        imagepath_today, imagepath))
+        # Copy file to backup location
+        backupimage(imagepath, imagepath_backup)
+
+    else:# use SFTP to transfer the file
+        print('Server NOT connected!')
+        try:
+            ssh = paramiko.SSHClient()
+            ssh.load_system_host_keys()
+            ssh.connect('18.62.1.253', username='bec1admin', password='m4rt1niscool')
+            sftp = ssh.open_sftp()
+        except:
+            raise IOError('Connection refused')
+
+        if lab=='bec1':
+            basepath = 'Raw Data/Images'
+        elif lab=='fermi3':
+            basepath = 'Raw Data/Fermi3/Images'
+
+        try: # check if image taken today
+            imagepath_today = basepath+'/'+ subpath+'/'+ imagename
+            sftp.stat(imagepath_today)
+            imagepath = imagepath_today
+        except:
+            try: # check if image taken yesterday
+                imagepath_yesterday = basepath+'/'+ subpath+'/'+ imagename
+                sftp.stat(imagepath_yesterday)
+                imagepath = imagepath_yesterday
+            except: #raise error if no image
+                raise FileNotFoundError(
+                    'Image NOT present on the server: Possibly invalid filename or folder location? Not found at : {} and {}'.format(
+                        imagepath_today, imagepath))
+
+        if not os.path.exists(os.path.join(backuploc(lab), subpath)):
+            os.makedirs(os.path.join(backuploc(lab), subpath))
+        sftp.get(imagepath,imagepath_backup)
+        sftp.close()
+
     # Return the backup path
     return imagepath_backup
 
