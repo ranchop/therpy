@@ -39,8 +39,6 @@ import pickle
 import IPython.display
 from tqdm import tqdm_notebook as tqdm
 
-import bec1db as bec1db_package
-bec1db = bec1db_package.Tullia(delta=15)
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -1186,7 +1184,7 @@ class Image:
                                 prep_order=['rotate','crop','subsample'],
                                 fudge=1, bg_width=0, bg_order=1, bad_light=0,
                                 Isat=1, time=1, pixel=1e-6, detuning=0,
-                                od_method='log', sigmaf=1, memory_saver=False,
+                                od_method='log', sigma0=cst_.sigma0, sigmaf=1, memory_saver=False,
                                 lookup_table_version='v1')
 
         Level_Selector_Image = [['name','path','center_x','center_y','center',
@@ -1365,7 +1363,7 @@ class Image:
     def sigmaf(self,): return self.var.get('sigmaf')
 
     @property
-    def sigma(self,): return self.var.get('sigma', cst_.sigma0 * self.sigmaf)
+    def sigma(self,): return self.var.get('sigma', self.var.get('sigma0') * self.sigmaf)
 
     @property
     def memory_saver(self,): return self.var.get('memory_saver')
@@ -2424,7 +2422,7 @@ class Curve:
             # Print
             print("##______Fit Value______Error______")
             for i,val in enumerate(fitres):
-                print("{:2d} ==> {:9.4} (+-) {:9.4}".format(i, fitres[i], fiterr[i]))
+                print("{:2d} ==> {:9.4f} (+-) {:9.4f}".format(i, fitres[i], fiterr[i]))
         # return fitresults
         return (fitres, fiterr)
 
