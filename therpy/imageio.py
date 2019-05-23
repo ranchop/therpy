@@ -11,6 +11,8 @@ import matplotlib.pyplot as pp
 from shutil import copyfile
 import warnings
 import paramiko
+import json
+from sys import platform as _platform
 
 
 ## High Level Functions
@@ -118,7 +120,7 @@ def imagename2subfolder(imagename=None, sftp=False):
 
 
 # string for subfolder = imagename2subfolder( string for image name )
-def imagename2subfolder_yesterday(imagename=None, sftp='False'):
+def imagename2subfolder_yesterday(imagename=None, sftp=False):
     # Special case if imagename is not provided
     if imagename is None: return 'None'
     # Default values for pattern (future version: include as an optional input)
@@ -163,17 +165,23 @@ def imagename2subfolder_yesterday(imagename=None, sftp='False'):
 
 
 # imagedata = imagename2imagepath(imagename)
-def imagename2imagepath(imagename, lab='bec1', redownload=False):
+def imagename2imagepath(imagename, lab='bec1', redownload=False, use_sftp=False):
     # Extract the subfolder path
     subpath = imagename2subfolder(imagename)
+    subpath_yesterday = imagename2subfolder_yesterday(imagename)
     # Fix the extension
     imagename = fixextension(imagename)
     # Check if it exists on temporary location
     imagepath_backup = os.path.join(backuploc(lab), subpath, imagename)
+    imagepath_backup_yesterday = os.path.join(backuploc(lab), subpath_yesterday, imagename)
+
     if os.path.exists(imagepath_backup) and not redownload:
         return imagepath_backup
+
+    if os.path.exists(imagepath_backup_yesterday ) and not redownload:
+        return imagepath_backup_yesterday 
+
     # Find the base path depending on the platform
-    from sys import platform as _platform
     if _platform == 'darwin':
         # Mac OS X
         if lab=='bec1':
@@ -205,12 +213,25 @@ def imagename2imagepath(imagename, lab='bec1', redownload=False):
         # Copy file to backup location
         backupimage(imagepath, imagepath_backup)
 
-    else:# use SFTP to transfer the file
+    if use_sftp:# use SFTP to transfer the file
         print('Server NOT connected!')
+        # try to get creds
+        config_path = os.path.join(os.path.expanduser('~'), 'Documents', 'My Programs', 'config.json')
+
+        if os.path.exists(config_path) is False:
+            raise FileNotFoundError('Please place a config.json file in your Documents/My Programs directory to use SFTP transfer. ')
+        else:
+            try:
+                with open(config_path) as file:
+                    config = json.load(file)
+            except:
+                raise IOError('Problem reading config file')
+            
         try:
             ssh = paramiko.SSHClient()
             ssh.load_system_host_keys()
-            ssh.connect('18.62.1.253', username='bec1admin', password='m4rt1niscool')
+            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            ssh.connect('18.62.1.253', username=config.get('user'), password=config.get('pass'))
             sftp = ssh.open_sftp()
         except:
             raise IOError('Connection refused')
