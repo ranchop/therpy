@@ -164,7 +164,7 @@ def imagename2imagepath(imagename, redownload=False):
         basepath = None
     # Check if server is connected
     if os.path.exists(basepath) is False:
-        raise FileNotFoundError('Server NOT connected! and file was not found at {}'.format(imagepath_backup))
+        raise FileNotFoundError('Server NOT connected at {}! and file was not found at {}'.format(basepath, imagepath_backup))
     # Find the fullpath to the image
     imagepath = os.path.join(basepath, subpath, imagename)
     # Check if file exists

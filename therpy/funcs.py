@@ -171,7 +171,8 @@ def lorentzian(x, x0=0., gamma=1., amp=1., offset=0., gradient=0.):
     lorentzian function : (x, x0=0., gamma=1., amp=1., offset=0., gradient=0.)
     gamma = FWHM : Full Width at Half Maximum
     amp is the amplitude at the center
-    This function is not normalized to 1.
+    This function is not normalized to 1
+    Area under this Lorentzian is (A * Gamma * pi / 2) with offset and gradient = 0.
     '''
     return amp * ((gamma/2)**2) / ((x-x0)**2 + (gamma/2)**2) + offset + gradient * x
 
@@ -214,7 +215,7 @@ Fourier Transform
 def fourier_transform(x, y, k=None):
     '''
     Fourier Transform : f(k) = int_dx {f(x)*exp(-ikx)}
-    Normalization : Multiply by 2 / L for proper normalization
+    Normalization : Multiply by 2 / L for proper normalization. Except k=0, which needs 1/L
     inputs (x, y, k=None) returns (k, f(k))
     default k = 100 points from k = 0 to max_k/2
     '''
@@ -272,12 +273,14 @@ class cst:
         self.f = 446.799677e12
         self.tau = 27.102e-9
         self.mass = 9.988346 * 10 ** -27
+        self.Isat = 25.4 # W/m^2
         self.atomtype = 'Lithium 6, D2 Line'
 
     def LiD1(self):
         self.f = 446.789634e12
         self.tau = 27.102e-9
         self.mass = 9.988346 * 10 ** -27
+        self.Isat = 75.9 # W/m^2
         self.atomtype = 'Lithium 6, D1 Line'
 
     def NaD2(self):
@@ -2476,7 +2479,7 @@ def images_from_clipboard(df=None, x='time', params=[], image_func=Image, downlo
 
     # Fix the list of parameters
     required_params = ['name','time','image','A','B','S','download']
-    if (x not in params) and (x != 'time'): params = params + x
+    if (x not in params) and (x != 'time'): params = params + [x]
     if 'unixtime' in params: params.remove('unixtime')
 
     # Prepare DataFrame for inserting new data
