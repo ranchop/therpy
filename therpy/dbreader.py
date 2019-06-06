@@ -1,4 +1,4 @@
-# This is copied from Biswaroop Mukhrejee's bec1db
+# Biswaroop Mukherjee's bec1db v1.2 
 
 import os
 import re
@@ -22,12 +22,6 @@ def internet_on():
         print('Connect to the internet to get the latest database!')
         return False
 
-# Read the clipboard
-def clipboard():
-    # A helper method to copy image names from the clipboard
-    df = pd.read_clipboard(names=['name'])
-    images = df['name'].tolist()
-    return images
 
 ###-------------------
 ###  SQLITE functions
@@ -162,7 +156,7 @@ def generate_dictionary(line):
     # Set up params as a list
     paramline = re.sub(' |=|\+','',current_line[1])
     paramline = re.split(';|,',paramline)[0:-1] # Split by ; or ,
-    paramline[::2] = [re.sub('\.','',param) for param in paramline[::2]] # remove . from parameter name only
+    paramline[::2] = ['exp_'+re.sub('\.','',param) for param in paramline[::2]] # remove . from parameter name only
     paramline[1::2] = [float(param) for param in paramline[1::2]] # turn experimental parameters into floats
     params =  extra_params + paramline
     params[::2] = [str.strip(param).lower() for param in params[::2]] # Clean params
@@ -170,7 +164,12 @@ def generate_dictionary(line):
     # Turn it into a dictionary and return
     return dict(zip(params[0::2], params[1::2]))
 
-
+# Read the clipboard
+def clipboard():
+    # A helper method to copy image names from the clipboard
+    df = pd.read_clipboard(names=['name'])
+    images = df['name'].tolist()
+    return images
 
 
 ## Convert files to dictionaries
@@ -224,11 +223,7 @@ def read_snippet_line(filename, line_to_read):
     return line_dict
 
 ## Define a local location to store the database
-def localloc(lab='bec1', db=True):
-    if db:
-        subfolder='Database'
-    else:
-        subfolder='Snippet'
+def localloc(lab='bec1'):
     # Get user home directory
     basepath = os.path.expanduser('~')
     # Find out the os
@@ -236,10 +231,10 @@ def localloc(lab='bec1', db=True):
     # Platform dependent storage
     if _platform == 'darwin':
         # Mac OS X
-        localpath = os.path.join(basepath, 'Documents', 'My Programs', subfolder, lab)
+        localpath = os.path.join(basepath, 'Documents', 'My Programs', 'Database', lab)
     elif _platform == 'win32' or _platform == 'cygwin':
         # Windows
-        localpath = os.path.join(basepath, 'Documents', 'My Programs', subfolder, lab)
+        localpath = os.path.join(basepath, 'Documents', 'My Programs', 'Database', lab)
     else:
         # Unknown platform
         return None
@@ -248,62 +243,11 @@ def localloc(lab='bec1', db=True):
     return localpath
 
 
-# copy the snippet files if needed
-def copy_snippet(snippetpath, localpath, lab='bec1', imagesin=[]):
-    if type(imagesin)==str:
-        imagesin=[imagesin]
-    if type(imagesin)==list:
-        if imagesin==[]:
-            print('no images')
-        images = [image[0:19] for image in imagesin]
-        # Convert the time strings to datetimes
-        try:
-            image_times = [timestr_to_datetime(image) for image in images]
-        except ValueError:
-            print('Some of the image names are not valid')
-            raise
-            return None
-        unique_image_times = set(image_times)
-        adjacent_image_times = set()
-        ## account for midnight switchover time discrepancies
-        for uit in unique_image_times:
-            if uit.hour==23:
-                adjacent_image_times.add(uit + datetime.timedelta(hours=1))
-            if uit.hour==0:
-                adjacent_image_times.add(uit + datetime.timedelta(hours=-1))
-        snippet_file_image_times = unique_image_times.union(adjacent_image_times)
-        filenames = [image_time.strftime('%Y-%m-%d')+'.txt' for image_time in snippet_file_image_times]
-        localfilepaths = []
-        for fn in filenames:
-            localfp = os.path.join(localpath, fn)
-            if not os.path.exists(localfp):
-                shutil.copy(os.path.join(snippetpath, fn), localfp)
-            localfilepaths.append(localfp)
-
-        return set(localfilepaths)
-    else:
-        print('error imagesin not list')
-
-
-
-
-###-----------------------------------
-### Functions to copy the db
-###-----------------------------------
-
-
 # Clean the parameters
 def clean_params(params):
     params = [re.sub(' |=|\+|\.','',param) for param in params]
     extra_params = ['snippet_time', 'Date', 'Time', 'year','month', 'day', 'hour', 'minute','second', 'unixtime']
     paramsout = ['exp_'+ param for param in params if param not in extra_params]+[param for param in params if param in extra_params]
-    paramsout = [str.strip(param).lower() for param in paramsout]
-    return paramsout
-
-def clean_params_snippet(params):
-    params = [re.sub(' |=|\+|\.','',param) for param in params]
-    extra_params = ['snippet_time', 'Date', 'Time', 'year','month', 'day', 'hour', 'minute','second', 'unixtime']
-    paramsout = [param for param in params if param not in extra_params]+[param for param in params if param in extra_params]
     paramsout = [str.strip(param).lower() for param in paramsout]
     return paramsout
 
@@ -331,71 +275,54 @@ def copy_db(dbpath, localpath, lab='bec1', password=''):
 
 
 
-
-
-###-----------------------------------
-### API
-###-----------------------------------
-
-
-
-
-
 # The database api class
 class Tullia:
-    def __init__(self, delta=10, snippet=True, connect=True, lab='bec1', password=''):
+    def __init__(self, delta=10, connect=True, lab='bec1', password=''):
         self.localdbpath = os.path.join(localloc(),'Zeus.db')
         self.delta=delta
         self.connect=connect
         self.lab=lab
         self.password=password
-        self.snippet=snippet
         try:
             self.refresh()
         except:
             print('The servers are not connected!')
+            if os.path.exists(self.localdbpath):
+                print('Using the local database copy. Could be outdated!')
+            else:
+                print()
+                raise FileNotFoundError("Couldn't find the local database! Connect to the internet and servers to get a copy.")
 
 
     def refresh(self):
+        ## Get the original database directory and version
+        databasepath = pathmake(main_folder='Processed Data', sub_folder='Database')
+        self.databasepath = os.path.join(databasepath,'Zeus.db')
+        remote_version = os.stat(self.databasepath).st_mtime
+        self.localdbpath = os.path.join(localloc(),'Zeus.db')
         ## Download the database
         internet = internet_on()
-        if self.snippet:
-            self.localsnippetpath = localloc(lab=self.lab, db=False)
-            if self.lab=='bec1':
-                self.snippetpath = pathmake(main_folder='Raw Data', sub_folder='Snippet')
-            elif self.lab=='fermi3':
-                self.snippetpath = pathmake(main_folder='Raw Data', sub_folder='Fermi3')
-                self.snippetpath = os.path.join(self.snippetpath, 'Snippet')
-            if not internet:
-                print('You need to connect to the internet to get the latest snippets')
-            return
-        else:
-            ## Get the original database directory and version
-            databasepath = pathmake(main_folder='Processed Data', sub_folder='Database')
-            self.databasepath = os.path.join(databasepath,'Zeus.db')
-            remote_version = os.stat(self.databasepath).st_mtime
-            self.localdbpath = os.path.join(localloc(lab=self.lab, db=True),'Zeus.db')
-            if not internet and not os.path.exists(self.localdbpath):
-                print('You need to connect to the internet to download a db')
-            elif internet and not os.path.exists(self.localdbpath):
-                # Copy if no version exists locally
-                print('Downloading the database...')
+        if not internet and not os.path.exists(self.localdbpath):
+            print('You need to connect to the internet to download a db')
+        elif internet and not os.path.exists(self.localdbpath):
+            # Copy if no version exists locally
+            print('Downloading the database...')
+            copy_db(self.databasepath, localloc(self.lab), lab=self.lab, password=self.password)
+            os.utime(self.localdbpath,(remote_version, remote_version))
+            print('Done')
+        elif internet and os.path.exists(self.localdbpath):
+            # Update db
+            local_version = os.stat(self.localdbpath).st_mtime
+            if local_version == remote_version:
+                return
+            elif self.connect==False:
+                print('You have chosen to not update your database.')
+            else:
+                print('Updating the local database...')
                 copy_db(self.databasepath, localloc(self.lab), lab=self.lab, password=self.password)
                 os.utime(self.localdbpath,(remote_version, remote_version))
                 print('Done')
-            elif internet and os.path.exists(self.localdbpath):
-                # Update db
-                local_version = os.stat(self.localdbpath).st_mtime
-                if local_version == remote_version:
-                    return
-                elif self.connect==False:
-                    print('You have chosen to not update your database.')
-                else:
-                    print('Updating the local database...')
-                    copy_db(self.databasepath, localloc(self.lab), lab=self.lab, password=self.password)
-                    os.utime(self.localdbpath,(remote_version, remote_version))
-                    print('Done')
-                    return
+                return
 
 
     def image_query(self,imagesin,paramsoriginals='*'):
@@ -404,65 +331,28 @@ class Tullia:
         if type(imagesin)==str and type(paramsoriginals)==str and not paramsoriginals=='*':
             imagename=imagesin
             unixtime_0 = unix_time(timestr_to_datetime(imagename[0:19]))
+            unixtimes = str(int(unixtime_0 -self.delta)) + ' AND ' + str(int(unixtime_0 +self.delta))
+            sql = 'SELECT * from data where unixtime between {unixtime_range}'
+            sql_query = sql.format(unixtime_range=unixtimes)
+            zeus = Zeus(self.localdbpath)
+            dbcolumns = zeus.columns_query()
+            results = zeus.data_query(sql_query)
+            results_df = pd.DataFrame(results, columns=dbcolumns)
             param = re.sub(' |=|\+|\.','',paramsoriginals)
             param = str.strip(param).lower()
-            if self.snippet:
-                # Use Snippets
-                filepaths = copy_snippet(self.snippetpath, self.localsnippetpath, lab=self.lab, imagesin=imagename)
-                all_runs = []
-                for fp in filepaths:
-                    all_runs = all_runs + read_snippet_file(fp)
-                results = []
-                for run in all_runs:
-                    if (unixtime_0 -self.delta) <= run.get('unixtime') <= (unixtime_0 +self.delta):
-                        results=results+[run]
-                if len(results)>1:
-                    print('too many matches: narrow down your delta')
-                else:
-                    if param in results[0].keys():
-                        return results[0].get(param)
-                    else:
-                        print('Parameter not found: Param names are unique up to casing and the following special characters: = + . ')
-            else:
-                #Use Database
-                unixtimes = str(int(unixtime_0 -self.delta)) + ' AND ' + str(int(unixtime_0 +self.delta))
-                sql = 'SELECT * from data where unixtime between {unixtime_range}'
-                sql_query = sql.format(unixtime_range=unixtimes)
-                zeus = Zeus(self.localdbpath)
-                dbcolumns = zeus.columns_query()
-                results = zeus.data_query(sql_query)
-                results_df = pd.DataFrame(results, columns=dbcolumns)
-                return results_df[param].tolist()[0]
+            return results_df[param].tolist()[0]
 
         ## for string imagename but all columns are wanted
         elif type(imagesin)==str and paramsoriginals=='*':
             imagename=imagesin
             unixtime_0 = unix_time(timestr_to_datetime(imagename[0:19]))
-            if self.snippet:
-                # Use Snippets
-                filepaths = copy_snippet(self.snippetpath, self.localsnippetpath, lab=self.lab, imagesin=imagename)
-                all_runs = []
-                for fp in filepaths:
-                    all_runs = all_runs + read_snippet_file(fp)
-                results = []
-                for run in all_runs:
-                    if (unixtime_0 -self.delta) <= run.get('unixtime') <= (unixtime_0 +self.delta):
-                        results=results+[run]
-                if len(results)>1:
-                    print('too many matches: narrow down your delta')
-                else:
-                    results_df = pd.DataFrame()
-                    results_df = results_df.append(results[0], ignore_index=True)
-
-            else:
-                unixtimes = str(int(unixtime_0 -self.delta)) + ' AND ' + str(int(unixtime_0 +self.delta))
-                sql = 'SELECT * from data where unixtime between {unixtime_range}'
-                sql_query = sql.format(unixtime_range=unixtimes)
-                zeus = Zeus(self.localdbpath)
-                dbcolumns = zeus.columns_query()
-                results = zeus.data_query(sql_query)
-                results_df = pd.DataFrame(results, columns=dbcolumns)
-
+            unixtimes = str(int(unixtime_0 -self.delta)) + ' AND ' + str(int(unixtime_0 +self.delta))
+            sql = 'SELECT * from data where unixtime between {unixtime_range}'
+            sql_query = sql.format(unixtime_range=unixtimes)
+            zeus = Zeus(self.localdbpath)
+            dbcolumns = zeus.columns_query()
+            results = zeus.data_query(sql_query)
+            results_df = pd.DataFrame(results, columns=dbcolumns)
             return results_df
 
 
@@ -472,64 +362,49 @@ class Tullia:
             # Clean the image names and parameter names
             images = [image[0:19] for image in imagesin]
             paramsin =  ['unixtime' ] # need the unixtimes to find a match
-            # Make a new dataframe
-            df = pd.DataFrame(columns=['imagename']+paramsin)
+            params = clean_params(paramsin)
+
+            zeus = Zeus(self.localdbpath)
 
             # Convert the time strings to datetimes
             try:
                 image_times = [timestr_to_datetime(image) for image in images]
-                timeranges = []
-                for image_time in image_times:
-                    unixtime_0 = unix_time(image_time)
-                    unixtimes = str(int(unixtime_0 -self.delta)) + ' AND ' + str(int(unixtime_0 +self.delta))
-                    timeranges = timeranges + [unixtimes]
             except ValueError:
                 print('Some of the image names are not valid')
                 raise
                 return None
 
-            if self.snippet:
-                # use snippets
-                params = clean_params_snippet(paramsin)
-                filepaths = copy_snippet(self.snippetpath, self.localsnippetpath, lab=self.lab, imagesin=imagesin)
-                all_runs = []
-                for fp in filepaths:
-                    all_runs = all_runs + read_snippet_file(fp)
-                for image in imagesin: # for each image, search for the run in all_runs
-                    unixtime_0 = unix_time(timestr_to_datetime(image[0:19]))
-                    results = []
-                    for run in all_runs:
-                        if (unixtime_0 -self.delta) <= run.get('unixtime') <= (unixtime_0 +self.delta):
-                            results=results+[run]
-                    if len(results)>1:
-                        print('Too many matches: narrow down your delta')
-                    else:
-                        results[0]['imagename'] = image
-                        df = df.append(results[0], ignore_index=True)
-            else:
-                # use DB:
-                params = clean_params(paramsin)
-                zeus = Zeus(self.localdbpath)
 
-                # Generate the SQL query
-                sql = '''SELECT * FROM data WHERE unixtime between {unixtime_range}'''
-                times = ' OR unixtime between '.join(timeranges)
-                sql_query = sql.format(unixtime_range=times)
+            # Make a new dataframe
+            df = pd.DataFrame(columns=['imagename']+paramsin)
 
-                # Query the DB
-                cols = zeus.columns_query()
-                results = zeus.data_query(sql_query)
-                results_df = pd.DataFrame(results,columns=cols)
+            # Generate the SQL query
+            sql = '''SELECT * FROM data WHERE unixtime between {unixtime_range}'''
 
-                # Locate the requested images in the query results
-                results_times = np.array(results_df['unixtime'].tolist())
-                for image_time in image_times:
-                    unixtime_0 = unix_time(image_time)
-                    matchloc = np.argmin(np.abs(results_times-unixtime_0))
-                    df_to_append = results_df[matchloc:matchloc+1]
-                    df = df.append(pd.DataFrame(df_to_append,columns=cols), ignore_index=True)
+            timeranges = []
+            for image_time in image_times:
+                unixtime_0 = unix_time(image_time)
+                unixtimes = str(int(unixtime_0 -self.delta)) + ' AND ' + str(int(unixtime_0 +self.delta))
+                timeranges = timeranges + [unixtimes]
 
-                df['imagename'] = imagesin
+            times = ' OR unixtime between '.join(timeranges)
+            sql_query = sql.format(unixtime_range=times)
+
+            # Query the DB
+            cols = zeus.columns_query()
+            results = zeus.data_query(sql_query)
+            results_df = pd.DataFrame(results,columns=cols)
+
+            # Locate the requested images in the query results
+            results_times = np.array(results_df['unixtime'].tolist())
+            for image_time in image_times:
+                unixtime_0 = unix_time(image_time)
+                matchloc = np.argmin(np.abs(results_times-unixtime_0))
+                df_to_append = results_df[matchloc:matchloc+1]
+                df = df.append(pd.DataFrame(df_to_append,columns=cols), ignore_index=True)
+
+            df['imagename'] = imagesin
+
 
             return df
 
@@ -543,8 +418,10 @@ class Tullia:
             else:
                 paramsin = paramsoriginals + ['unixtime' ] # need the unixtimes to find a match
 
-            # Make a new dataframe
-            df = pd.DataFrame(columns=['imagename']+paramsin)
+            params = clean_params(paramsin)
+
+            zeus = Zeus(self.localdbpath)
+
             # Convert the time strings to datetimes
             try:
                 image_times = [timestr_to_datetime(image) for image in images]
@@ -553,60 +430,36 @@ class Tullia:
                 raise
                 return None
 
-            if self.snippet:
-                # use snippet
-                params = clean_params_snippet(paramsin)+['imagename']
-                filepaths = copy_snippet(self.snippetpath, self.localsnippetpath, lab=self.lab, imagesin=imagesin)
-                all_runs = []
-                for fp in filepaths:
-                    all_runs = all_runs + read_snippet_file(fp)
-                for image in imagesin: # for each image, search for the run in all_runs
-                    unixtime_0 = unix_time(timestr_to_datetime(image[0:19]))
-                    results = []
-                    for run in all_runs:
-                        if (unixtime_0 -self.delta) <= run.get('unixtime') <= (unixtime_0 +self.delta):
-                            results=results+[run]
-                    if len(results)>1:
-                        print('Too many matches: narrow down your delta')
-                    else:
-                        for param in params:
-                            if not param in results[0].keys():
-                                results[0][param] = 'NaN'
-                        results[0]['imagename'] = image
-                        df = df.append({d:results[0][d] for d in params}, ignore_index=True)
-            else:
-                # use database
-                params = clean_params(paramsin)
-                zeus = Zeus(self.localdbpath)
-                # Make a new dataframe
-                df = pd.DataFrame(columns=['imagename']+paramsin)
 
-                # Generate the SQL query
-                sql = '''SELECT {columns} FROM data WHERE unixtime between {unixtime_range}'''
+            # Make a new dataframe
+            df = pd.DataFrame(columns=['imagename']+paramsin)
 
-                timeranges = []
-                for image_time in image_times:
-                    unixtime_0 = unix_time(image_time)
-                    unixtimes = str(int(unixtime_0 -self.delta)) + ' AND ' + str(int(unixtime_0 +self.delta))
-                    timeranges = timeranges + [unixtimes]
+            # Generate the SQL query
+            sql = '''SELECT {columns} FROM data WHERE unixtime between {unixtime_range}'''
 
-                times = ' OR unixtime between '.join(timeranges)
-                cols = ', '.join(params)
-                sql_query = sql.format(columns=cols, unixtime_range=times)
+            timeranges = []
+            for image_time in image_times:
+                unixtime_0 = unix_time(image_time)
+                unixtimes = str(int(unixtime_0 -self.delta)) + ' AND ' + str(int(unixtime_0 +self.delta))
+                timeranges = timeranges + [unixtimes]
 
-                # Query the DB
-                results = zeus.data_query(sql_query)
-                results_df = pd.DataFrame(results,columns=paramsin)
+            times = ' OR unixtime between '.join(timeranges)
+            cols = ', '.join(params)
+            sql_query = sql.format(columns=cols, unixtime_range=times)
 
-                # Locate the requested images in the query results
-                results_times = np.array(results_df['unixtime'].tolist())
-                for image_time in image_times:
-                    unixtime_0 = unix_time(image_time)
-                    matchloc = np.argmin(np.abs(results_times-unixtime_0))
-                    df_to_append = results_df[matchloc:matchloc+1]
-                    df = df.append(pd.DataFrame(df_to_append,columns=paramsin), ignore_index=True)
+            # Query the DB
+            results = zeus.data_query(sql_query)
+            results_df = pd.DataFrame(results,columns=paramsin)
 
-                df['imagename'] = imagesin
+            # Locate the requested images in the query results
+            results_times = np.array(results_df['unixtime'].tolist())
+            for image_time in image_times:
+                unixtime_0 = unix_time(image_time)
+                matchloc = np.argmin(np.abs(results_times-unixtime_0))
+                df_to_append = results_df[matchloc:matchloc+1]
+                df = df.append(pd.DataFrame(df_to_append,columns=paramsin), ignore_index=True)
+
+            df['imagename'] = imagesin
 
             if not 'unixtime' in paramsoriginals:
                 df = df.drop('unixtime', 1)
