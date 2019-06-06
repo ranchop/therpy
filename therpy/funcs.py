@@ -39,8 +39,8 @@ import pickle
 import IPython.display
 from tqdm import tqdm_notebook as tqdm
 
-import bec1db as bec1db_package
-bec1db = bec1db_package.Tullia(delta=15)
+from . import dbreader
+bec1db = dbreader.Tullia(delta=15)
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
