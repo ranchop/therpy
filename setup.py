@@ -7,7 +7,7 @@ setup(
     packages=['therpy',],
 
     # Package requirements
-    install_requires=['pyfits','tqdm','bec1db',],
+    install_requires=['pyfits','tqdm',],
 
     # metadata
     author='Parth Patel',
