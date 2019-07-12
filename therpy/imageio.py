@@ -191,9 +191,9 @@ def imagename2imagepath(imagename, lab='bec1', redownload=False, use_sftp=False)
     elif _platform == 'win32' or _platform == 'cygwin':
         # Windows
         if lab=='bec1':
-            basepath = '\\\\18.62.1.253\\Raw Data\\Images'
+            basepath = '\\\\bec1server.mit.edu\\Raw Data\\Images'
         elif lab=='fermi3':
-            basepath = '\\\\18.62.1.253\\Raw Data\\Fermi3\\Images'
+            basepath = '\\\\bec1server.mit.edu\\Raw Data\\Fermi3\\Images'
     else:
         # Unknown platform
         basepath = None
@@ -231,7 +231,7 @@ def imagename2imagepath(imagename, lab='bec1', redownload=False, use_sftp=False)
             ssh = paramiko.SSHClient()
             ssh.load_system_host_keys()
             ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            ssh.connect('18.62.1.253', username=config.get('user'), password=config.get('pass'))
+            ssh.connect('bec1server.mit.edu', username=config.get('user'), password=config.get('pass'))
             sftp = ssh.open_sftp()
         except:
             raise IOError('Connection refused')
