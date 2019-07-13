@@ -3,11 +3,11 @@ from setuptools import setup
 
 setup(
     name='therpy',
-    version='0.3.3',
+    version='0.3.4',
     packages=['therpy',],
 
     # Package requirements
-    install_requires=['pyfits','tqdm',],
+    install_requires=['tqdm', 'astropy'],
 
     # metadata
     author='Parth Patel',

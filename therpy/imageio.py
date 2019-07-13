@@ -7,7 +7,7 @@ import datetime
 from datetime import timedelta
 import re
 # import pyfits
-import astropy.io.fits as pyfits 
+import astropy.io.fits as pyfits
 import matplotlib.pyplot as pp
 from shutil import copyfile
 import warnings
@@ -160,7 +160,7 @@ def imagename2imagepath(imagename, redownload=False):
         basepath = '/Volumes/Raw Data/Images'
     elif _platform == 'win32' or _platform == 'cygwin':
         # Windows
-        basepath = '\\\\18.62.1.253\\Raw Data\\Images'
+        basepath = '\\\\18.25.16.34\\Raw Data\\Images'
     else:
         # Unknown platform
         basepath = None
