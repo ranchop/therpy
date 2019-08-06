@@ -30,7 +30,6 @@ __all__ = [
 import numpy as np
 import pandas as pd
 import os
-import os.path
 import time
 import collections
 import urllib.request
@@ -39,8 +38,6 @@ import pickle
 import IPython.display
 from tqdm import tqdm_notebook as tqdm
 
-import bec1db as bec1db_package
-bec1db = bec1db_package.Tullia(delta=15)
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -213,12 +210,13 @@ Fourier Transform
 '''
 def fourier_transform(x, y, k=None):
     '''
-    Fourier Transform : f(k) = int_dx {f(x)*exp(-ikx) * 1/sqrt(2 pi)}
+    Fourier Transform : f(k) = int_dx {f(x)*exp(-ikx)}
+    Normalization : Multiply by 2 / L for proper normalization
     inputs (x, y, k=None) returns (k, f(k))
     default k = 100 points from k = 0 to max_k/2
     '''
     if k is None: k = 2*np.pi * np.fft.rfftfreq(y.shape[0], np.diff(x)[0]) / 2
-    return [k, np.array([np.trapz(y * np.exp(-1j * ki * x) , x) for ki in k]) / (2*np.pi)**(1/2)]
+    return [k, np.array([np.trapz(y * np.exp(-1j * ki * x) , x) for ki in k])]
 
 def real_fast_fourier_transform(x, y):
     '''
@@ -1187,7 +1185,7 @@ class Image:
                                 fudge=1, bg_width=0, bg_order=1, bad_light=0,
                                 Isat=1, time=1, pixel=1e-6, detuning=0,
                                 od_method='log', sigmaf=1, memory_saver=False,
-                                lookup_table_version='v1')
+                                lookup_table_version='v1', atom='LiD2')
 
         Level_Selector_Image = [['name','path','center_x','center_y','center',
                                  'width','height','cropset','cropi','subsample',
@@ -1362,10 +1360,19 @@ class Image:
     def od_method(self,): return self.var.get('od_method')
 
     @property
+    def atom(self,): return self.var.get('atom')
+
+    @property
     def sigmaf(self,): return self.var.get('sigmaf')
 
     @property
-    def sigma(self,): return self.var.get('sigma', cst_.sigma0 * self.sigmaf)
+    def sigma(self,):
+        if self.atom=='NaD2':
+            s = cst_NaD2.sigma0
+        else:
+            s = cst_.sigma0
+
+        return self.var.get('sigma', s * self.sigmaf)
 
     @property
     def memory_saver(self,): return self.var.get('memory_saver')
@@ -1490,7 +1497,7 @@ class Image:
         ax_cb = divider.new_horizontal(size="8%", pad=0.05)
         fig1 = ax[0].get_figure()
         fig1.add_axes(ax_cb)
-        im = ax[0].imshow(np.log(alldata[1] / alldata[0]), clim = [self.od_raw.min(), self.od_raw.max()], origin='lower')
+        with np.errstate(divide='ignore', invalid='ignore'): im = ax[0].imshow(np.log(alldata[1] / alldata[0]), clim = [self.od_raw.min(), self.od_raw.max()], origin='lower')
         plt.colorbar(im, cax=ax_cb)
         ax[0].plot(x, y, 'w-', alpha=0.5)
         ax[0].set(title='Bare Image')
@@ -2424,7 +2431,7 @@ class Curve:
             # Print
             print("##______Fit Value______Error______")
             for i,val in enumerate(fitres):
-                print("{:2d} ==> {:9.4} (+-) {:9.4}".format(i, fitres[i], fiterr[i]))
+                print("{:2d} ==> {:9.4f} (+-) {:9.4f}".format(i, fitres[i], fiterr[i]))
         # return fitresults
         return (fitres, fiterr)
 
@@ -2976,7 +2983,7 @@ class curve_fit:
         ### Process guess -- generate guess_keys, guess_values, guess_bounds, guess_units
         # the order of keys will be determined by the order of fitfun input order
         if type(guess) == dict:
-            guess_keys = [k for k in fitfun.__code__.co_varnames[1:] if k in list(guess.keys())]
+            guess_keys = [k for k in fitfun.__code__.co_varnames[1:fitfun.__code__.co_argcount] if k in list(guess.keys())]
             temp_ = [temp_process_guess_item(guess[k]) for k in guess_keys]
         elif type(guess) in [list, tuple, np.ndarray]:
             guess_keys = fitfun.__code__.co_varnames[1:1+len(guess)]
@@ -2989,7 +2996,7 @@ class curve_fit:
         guess_values, guess_bounds, guess_units = np.array([i[0] for i in temp_]), np.array([i[1] for i in temp_]).T, [i[2] for i in temp_]
 
         ### Extract all fixed items, including provided and default ones
-        fixed_func_defaults = {k:v for k, v in zip(fitfun.__code__.co_varnames[-len(fitfun.__defaults__):], fitfun.__defaults__)}
+        fixed_func_defaults = {k:v for k, v in zip(fitfun.__code__.co_varnames[-len(fitfun.__defaults__):fitfun.__code__.co_argcount], fitfun.__defaults__)}
         fixed_dict = {**fixed_func_defaults, **fixed}
         for k in guess_keys: fixed_dict.pop(k, None)
 
@@ -3011,7 +3018,7 @@ class curve_fit:
         fitresults_dict = dict(FitValue=fv_, FitError=fe_, Units=guess_units, Guess=guess_values, LowerBound=guess_bounds[0], UpperBound=guess_bounds[1])
         fitresults_df = pd.DataFrame(fitresults_dict, index=guess_keys, columns=['FitValue','FitError','Units','Guess','LowerBound','UpperBound'])
         for k, v in fixed_dict.items(): fitresults_df.loc[k] = [v, 0, None, v, v, v]
-        fitresults_df = fitresults_df.loc[fitfun.__code__.co_varnames[1:], :] # sort the index by function input list
+        fitresults_df = fitresults_df.loc[fitfun.__code__.co_varnames[1:fitfun.__code__.co_argcount], :] # sort the index by function input list
         fitresults_df['FitError%'] = np.nan_to_num(np.abs(fitresults_df['FitError'] / fitresults_df['FitValue'])) * 100
 
         ### Store results to self
