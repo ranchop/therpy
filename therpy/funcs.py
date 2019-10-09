@@ -508,7 +508,7 @@ def FermiFunctionLargeZ_(m, logz):
     Details about the coefficients are in Mathematic file + Mehran Kardar's notes at
     http://ocw.mit.edu/courses/physics/8-333-statistical-mechanics-i-statistical-mechanics-of-particles-fall-2013/lecture-notes/MIT8_333F13_Lec24.pdf
     '''
-    return logz**m / scipy.misc.factorial(m) * (1 +
+    return logz**m / scipy.special.factorial(m) * (1 +
         1.644934067 / logz ** 2 * m * (m - 1) +
         1.894065659 / logz ** 4 * m * (m - 1) * (m - 2) * (m - 3) +
         1.971102183 / logz ** 6 * m * (m - 1) * (m - 2) * (m - 3) * (m - 4) * (m - 5) +
