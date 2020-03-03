@@ -48,6 +48,7 @@ def backuploc():
     if _platform == 'darwin':
         # Mac OS X
         backuppath = os.path.join(basepath, 'Documents', 'My Programs', 'Raw Imagedata Temporary')
+        backuppath = os.path.join(basepath, 'Documents Local', 'My Programs', 'Raw Imagedata Temporary')
     elif _platform == 'win32' or _platform == 'cygwin':
         # Windows
         backuppath = os.path.join(basepath, 'Documents', 'My Programs', 'Raw Imagedata Temporary')

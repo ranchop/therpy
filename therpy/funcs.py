@@ -37,7 +37,8 @@ import urllib.request
 import numba
 import pickle
 import IPython.display
-from tqdm import tqdm_notebook as tqdm
+import tqdm.notebook
+tqdm = tqdm.notebook.tqdm
 
 from . import dbreader
 bec1db = dbreader.Tullia(delta=15)
@@ -2956,7 +2957,7 @@ class curve_fit:
     Inputs Required :
         fitfun - python function with inputs (of type x_data, p0, p1, p2, p3, ...) and returns np.array y_data
         guess  - could be a simple list, or more detailed dict (see below for more info)
-        x_data - I think this could be anything supported by fitfun input, to be safe, keep it np.array
+        x_data - This could be anything supported by fitfun input, to be safe, keep it np.array
         y_data - must be np.array
 
     Inputs Optional :
@@ -2964,6 +2965,7 @@ class curve_fit:
         fixed - dict(gradient = 0, tau = 5, ...) : parameters to fix. NOTE: if guess contains the same key, that key will not be fixed
         plot  - True / False : Plots a standard figure with data, fit line, residuals
         info  - True / False : print(self.fr)
+        disp  - True / False : print(self.fr), info or disp are identical
 
     guess :
         1) guess = [12, 3, -np.pi, ...] : a simple list
@@ -2982,7 +2984,7 @@ class curve_fit:
         fe : indexable sdict of fit errors with parameters as keys, including the fixed and default parameters
         ul : indexable sdict of upper limit of fit values with parameters as keys, including the fixed and default parameters
         ll : indexable sdict of lower limit of fit values with parameters as keys, including the fixed and default parameters
-        xp : finely spaced grid for same x range : np.linspace(self.x.min(), self.x.max(), 1000)
+        xp : finely spaced grid for same x range : np.linspace(self.x.min(), self.x.max(), 1000), if fitfun allows
         ye : short form for y_err
 
     Special Methods :
@@ -2995,6 +2997,7 @@ class curve_fit:
 
     Methods : self.xxx(aa=yy, bb=yy, ..)
         yband(x = None, using=[]) :
+        bootstrap(runs=1000, plot=True, **kwargs)
         plot()
             two plots, data and fit curve on top, and residuals below. Optional inputs
             ax : to plot somewhere specific
@@ -3006,10 +3009,12 @@ class curve_fit:
         plot_residuals_hist(ax=None, orientation='vertical) : histogram of the residuals
         plot_fiterrors(ax=None, x=None, using=[]) : fit error band, optinally include only keys in using
     '''
-    def __init__(self, fitfun, guess, x_data, y_data, y_err=None, fixed=dict(), plot=False, info=False):
+    def __init__(self, fitfun, guess, x_data, y_data, y_err=None, fixed=dict(), plot=False, info=False, disp=False):
         ''' init will fit the data and save fitresults '''
         ### Verify inputs
         if not callable(fitfun): print("provided fitfun is not valid python function!")
+        # If y_err is not provided, set it to some small number, smaller than the smallers of y
+        if y_err == None: y_err = np.ones_like(x_data)*np.min(np.abs(y_data))/100000
 
         ### Process single item from guess -- return guess value, bounds, units
         def temp_process_guess_item(item):
@@ -3071,10 +3076,16 @@ class curve_fit:
         self.x = x_data
         self.y = y_data
         self.y_err = y_err
+        self.internal_fitfun = fitfun_args
+        self.internal_guess = guess_values
+        self.internal_sigma = y_err
+        self.internal_bounds = guess_bounds
+        self.internal_fv = fv_
+        self.internal_keys = guess_keys
 
         ### Plots and display
         if plot: self.plot()
-        if info: print(self)
+        if info or disp: print(self)
 
     @property
     def fv(self): return sdict(zip(self.fr.index.values, self.fr['FitValue'].values))
@@ -3085,7 +3096,13 @@ class curve_fit:
     @property
     def ll(self): return sdict(zip(self.fr.index.values, self.fr['FitValue'].values - self.fr['FitError'].values))
     @property
-    def xp(self): return np.linspace(self.x.min(), self.x.max(), 1000)
+    def xp(self):
+        xp = np.linspace(self.x.min(), self.x.max(), 1000)
+        # If the function always returns a fixed length output independent of the x input
+        if len(self.y) == len(self(xp)): xp = self.x
+        return xp
+    @property
+    def yp(self): return self(self.xp)
     @property
     def ye(self): return self.y_err
 
@@ -3120,7 +3137,8 @@ class curve_fit:
         '''Plot data and the fitline on ax (or new figure) with x (or self.xp) for fitline'''
         if x is None: x = self.xp
         if ax is None: fig, ax = plt.subplots()
-        ax.errorbar(self.x, self.y, self.y_err, fmt='r.-')
+        sorti = np.argsort(self.x)
+        ax.errorbar(self.x[sorti], self.y[sorti], self.y_err[sorti], fmt='r.-')
         ax.plot(x, self(x), 'k')
         return ax
     def plot_residuals(self, ax=None):
@@ -3128,7 +3146,8 @@ class curve_fit:
         if ax is None: fig, ax = plt.subplots()
         ax.axhline(0, c='k', alpha=0.5)
         ax.vlines(self.x, self.x*0, self.y-self())
-        ax.plot(self.x, self.y-self(), 'r.')
+        sorti = np.argsort(self.x)
+        ax.plot(self.x[sorti], self.y[sorti]-self()[sorti], 'r.')
         return ax
     def plot_residuals_hist(self, ax=None, orientation='vertical'):
         '''Plot histogram of the residul on ax (or new figure) with orientation either vertical or horizontal'''
@@ -3150,6 +3169,62 @@ class curve_fit:
         else: self.plot_fitdata(ax=ax1, x=x)
         self.plot_residuals(ax2)
         return (ax1, ax2)
+    def bootstrap(self, runs=1000, plot=False, info=False, disp=False):
+        # Fit runs many times
+        fvs = []
+        failed_count = 0
+        for i in tqdm(range(runs)):
+            usei = np.arange(self.x.size)
+            usei = np.random.choice(usei, usei.size)
+            try:
+                fv_ = scipy.optimize.curve_fit(self.internal_fitfun, self.x[usei], self.y[usei],
+                        self.internal_fv, sigma=self.internal_sigma, bounds=self.internal_bounds)[0]
+                fvs.append(fv_)
+            except (ValueError, RuntimeError) as err:
+                failed_count += 1
+        fvs = np.array(fvs)
+        if failed_count > 0: print("Fit failed {} times.".format(failed_count))
+        # Extract useful information
+        bs_raw = pd.DataFrame(fvs)
+        percentiles = np.array([0.5-0.9545/2, 0.5-0.6827/2, 0.5+0.6827/2, 0.5+0.9545/2]) # Confidence intervals at -2,-1,1,2 sigma
+        bs_percentiles = bs_raw.quantile(q=percentiles)
+        bsresults_dict = dict(mean=bs_raw.mean().values, std=bs_raw.std().values)
+        bsresults_df = pd.DataFrame(bsresults_dict, index=self.internal_keys, columns=['mean','std'])
+        bsresults_df['std%'] = bsresults_df['std'] / np.abs(bsresults_df['mean']) * 100
+        bsresults_df['std%'][bsresults_df['std%'] > 999] = 999
+        bsresults_df['-2 sigma'] = bs_percentiles.iloc[0,:].values
+        bsresults_df['-1 sigma'] = bs_percentiles.iloc[1,:].values
+        bsresults_df['+1 sigma'] = bs_percentiles.iloc[2,:].values
+        bsresults_df['+2 sigma'] = bs_percentiles.iloc[3,:].values
+
+        # Store results
+        self.bs_all = bs_raw
+        self.bs = bsresults_df
+        # Plot
+        if info or disp: print(self.bs)
+        if plot: return self.plot_bootstrap()
+    def plot_bootstrap(self, bins=50, color='gray', alpha=1, figsize=None,
+                   grid=True, ax=None, density=True):
+        ax = self.bs_all.hist(grid=grid, ax=ax, figsize=figsize, color=color,
+                              alpha=alpha, bins=bins, density=density).flatten()
+        for i in range(len(self.bs)):
+            ax[i].axvline(self.bs['mean'].iloc[i], color='k', zorder=0, alpha=1)
+            ax[i].axvspan(self.bs['-1 sigma'].iloc[i], self.bs['+1 sigma'].iloc[i], color='g', zorder=-1, alpha=0.25)
+            ax[i].axvspan(self.bs['-2 sigma'].iloc[i], self.bs['-1 sigma'].iloc[i], color='b', zorder=-2, alpha=0.25)
+            ax[i].axvspan(self.bs['+1 sigma'].iloc[i], self.bs['+2 sigma'].iloc[i], color='b', zorder=-2, alpha=0.25)
+            xlim = list(ax[i].get_xlim())
+            if xlim[0] < self.bs['mean'].iloc[i] - 4*self.bs['std'].iloc[i]:
+                xlim[0] = self.bs['mean'].iloc[i] - 4*self.bs['std'].iloc[i]
+                ax[i].axvspan(self.bs['mean'].iloc[i] - 4*self.bs['std'].iloc[i],
+                              self.bs['mean'].iloc[i] - 3.8*self.bs['std'].iloc[i], color='r', zorder=-2, alpha=0.5)
+            if xlim[1] > self.bs['mean'].iloc[i] + 4*self.bs['std'].iloc[i]:
+                xlim[1] = self.bs['mean'].iloc[i] + 4*self.bs['std'].iloc[i]
+                ax[i].axvspan(self.bs['mean'].iloc[i] + 3.8*self.bs['std'].iloc[i],
+                              self.bs['mean'].iloc[i] + 4*self.bs['std'].iloc[i], color='r', zorder=-2, alpha=0.5)
+            ax[i].set(title=r'{} : 1$\sigma$={:.0f}%'.format(self.bs.index.values[i], self.bs['std%'].iloc[i]))
+            ax[i].set(xlim=xlim)
+        plt.tight_layout()
+        return ax
 
 '''
 Area of Partial ellipse
