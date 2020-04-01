@@ -3014,7 +3014,7 @@ class curve_fit:
         ### Verify inputs
         if not callable(fitfun): print("provided fitfun is not valid python function!")
         # If y_err is not provided, set it to some small number, smaller than the smallers of y
-        if y_err == None: y_err = np.ones_like(x_data)*np.min(np.abs(y_data))/100000
+        if type(y_err) == type(None): y_err = np.ones_like(x_data)*np.min(np.abs(y_data))/100000
 
         ### Process single item from guess -- return guess value, bounds, units
         def temp_process_guess_item(item):
