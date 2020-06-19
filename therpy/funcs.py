@@ -3044,7 +3044,11 @@ class curve_fit:
         guess_values, guess_bounds, guess_units = np.array([i[0] for i in temp_]), np.array([i[1] for i in temp_]).T, [i[2] for i in temp_]
 
         ### Extract all fixed items, including provided and default ones
-        fixed_func_defaults = {k:v for k, v in zip(fitfun.__code__.co_varnames[-len(fitfun.__defaults__):fitfun.__code__.co_argcount], fitfun.__defaults__)}
+        total_inputs = fitfun.__code__.co_argcount
+        total_inputs_w_default = len(fitfun.__defaults__) if fitfun.__defaults__ else 0
+        fixed_keys = fitfun.__code__.co_varnames[total_inputs-total_inputs_w_default:total_inputs]
+        fixed_vals = fitfun.__defaults__ if fitfun.__defaults__ else []
+        fixed_func_defaults = {k:v for (k,v) in zip(fixed_keys, fixed_vals)}
         fixed_dict = {**fixed_func_defaults, **fixed}
         for k in guess_keys: fixed_dict.pop(k, None)
 
@@ -3125,7 +3129,7 @@ class curve_fit:
 
     def yband(self, x=None, using=[]):
         '''Return (y_min, y_max) at x including using list of fit errors'''
-        if x is None: x = self.x
+        if type(x) is type(None): x = self.x
         if type(using) == str: using = [using,]
         if len(using) == 0: using = self.fr.index.values
         ys = [self(x)]
@@ -3135,15 +3139,15 @@ class curve_fit:
         return (np.min(ys, axis=0), np.max(ys, axis=0))
     def plot_fitdata(self, ax=None, x=None):
         '''Plot data and the fitline on ax (or new figure) with x (or self.xp) for fitline'''
-        if x is None: x = self.xp
-        if ax is None: fig, ax = plt.subplots()
+        if type(x) is type(None): x = self.xp
+        if type(ax) is type(None): fig, ax = plt.subplots()
         sorti = np.argsort(self.x)
         ax.errorbar(self.x[sorti], self.y[sorti], self.y_err[sorti], fmt='r.-')
         ax.plot(x, self(x), 'k')
         return ax
     def plot_residuals(self, ax=None):
         '''Plot residual with vertical lines and zero line on ax (or new figure)'''
-        if ax is None: fig, ax = plt.subplots()
+        if type(ax) is type(None): fig, ax = plt.subplots()
         ax.axhline(0, c='k', alpha=0.5)
         ax.vlines(self.x, self.x*0, self.y-self())
         sorti = np.argsort(self.x)
@@ -3151,19 +3155,19 @@ class curve_fit:
         return ax
     def plot_residuals_hist(self, ax=None, orientation='vertical'):
         '''Plot histogram of the residul on ax (or new figure) with orientation either vertical or horizontal'''
-        if ax is None: fig, ax = plt.subplots()
+        if type(ax) is type(None): fig, ax = plt.subplots()
         ax.hist(self.y-self(), orientation=orientation)
         return ax
     def plot_fiterrors(self, ax=None, x=None, using=[]):
         '''Plot a band of y representing fit errors : on ax (or a new figure) with x (or self.ax) and with using list (or all) of fit variables'''
-        if x is None: x = self.xp
+        if type(x) is type(None): x = self.xp
         ax = self.plot_fitdata(ax)
         ax.fill_between(x, *self.yband(x=x, using=using), color='g', alpha=0.25)
         return ax
     def plot(self, ax=None, x=None, fiterrors=True, using=[], divider=0.25):
         '''Plot data with fitline and '''
-        if ax is None: ax = plt.subplots(figsize=[5,5])[1]
-        if x is None: x = self.xp
+        if type(ax) is type(None): ax = plt.subplots(figsize=[5,5])[1]
+        if type(x) is type(None): x = self.xp
         (ax1, ax2) = divide_axes(ax, divider=divider, direction='vertical', shared=True)
         if fiterrors: self.plot_fiterrors(ax=ax1, x=x, using=using)
         else: self.plot_fitdata(ax=ax1, x=x)
