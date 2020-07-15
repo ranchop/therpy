@@ -2963,6 +2963,10 @@ class curve_fit:
     Inputs Optional :
         y_err - sigma for the y_data, defaults to np.ones_like(y_data). The following is optimized sum ( (y_data-fitfun(...))/y_err )^2
         fixed - dict(gradient = 0, tau = 5, ...) : parameters to fix. NOTE: if guess contains the same key, that key will not be fixed
+        fitting_method - None, 'lm', 'trf', 'dogbox' : force a particular fitting method
+        loss_function - 'linear','soft_l1','huber','cauchy','arctan' : Robust fitting, function used to calculate the quantity to minize by least square algorythm
+        noise_level - double : Robust fitting, typical noise level for the data residual, values >> than this are considred outliers
+        NOTE: For reason I don't understand, robust fitting requires some y_err
         plot  - True / False : Plots a standard figure with data, fit line, residuals
         info  - True / False : print(self.fr)
         disp  - True / False : print(self.fr), info or disp are identical
@@ -3009,12 +3013,27 @@ class curve_fit:
         plot_residuals_hist(ax=None, orientation='vertical) : histogram of the residuals
         plot_fiterrors(ax=None, x=None, using=[]) : fit error band, optinally include only keys in using
     '''
-    def __init__(self, fitfun, guess, x_data, y_data, y_err=None, fixed=dict(), plot=False, info=False, disp=False):
+    def __init__(self, fitfun, guess, x_data, y_data, y_err=None, fixed=dict(),
+                 fitting_method=None, loss_function='linear', noise_level=None,
+                 plot=False, info=False, disp=False):
         ''' init will fit the data and save fitresults '''
         ### Verify inputs
         if not callable(fitfun): print("provided fitfun is not valid python function!")
         # If y_err is not provided, set it to some small number, smaller than the smallers of y
         if type(y_err) == type(None): y_err = np.ones_like(x_data)*np.min(np.abs(y_data))/100000
+        # Make sure noise_level is provided if loss_function is not 'linear'
+        if loss_function not in ['linear','soft_l1','huber','cauchy','arctan']:
+            print("provided loss_function isn't one of 5 options!")
+        if loss_function != 'linear' and type(noise_level) == type(None):
+            print("Must provid noise_level for the selected loss_function")
+            noise_level = 1.0 # default value because its not porvided
+        if loss_function == 'linear': robust_settings = dict() # robust fitting is not chosen
+        else:
+            robust_settings = dict(loss=loss_function, f_scale=noise_level)
+            if type(fitting_method) == type(None): fitting_method = 'trf' # default for robust fitting
+
+        # Additional inputs (not inputs now, but depending on use case, they could be added as inputs)
+        #
 
         ### Process single item from guess -- return guess value, bounds, units
         def temp_process_guess_item(item):
@@ -3059,7 +3078,9 @@ class curve_fit:
         ### Fit Data
         success = False
         try:
-            fv_, fe_ = scipy.optimize.curve_fit(fitfun_args, x_data, y_data, guess_values, sigma=y_err, bounds=guess_bounds)
+            fv_, fe_ = scipy.optimize.curve_fit(fitfun_args, x_data, y_data, guess_values,
+                                                sigma=y_err, bounds=guess_bounds, method=fitting_method,
+                                                **robust_settings)
             fe_ = np.sqrt(np.diag(fe_))
             success = True
         except (ValueError, RuntimeError) as err:
@@ -3086,6 +3107,8 @@ class curve_fit:
         self.internal_bounds = guess_bounds
         self.internal_fv = fv_
         self.internal_keys = guess_keys
+        self.internal_robust_settings = robust_settings
+        self.internal_fitting_method = fitting_method
 
         ### Plots and display
         if plot: self.plot()
@@ -3182,7 +3205,8 @@ class curve_fit:
             usei = np.random.choice(usei, usei.size)
             try:
                 fv_ = scipy.optimize.curve_fit(self.internal_fitfun, self.x[usei], self.y[usei],
-                        self.internal_fv, sigma=self.internal_sigma, bounds=self.internal_bounds)[0]
+                        self.internal_fv, sigma=self.internal_sigma, bounds=self.internal_bounds,
+                        method=self.internal_fitting_method, **self.internal_robust_settings)[0]
                 fvs.append(fv_)
             except (ValueError, RuntimeError) as err:
                 failed_count += 1
