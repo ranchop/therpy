@@ -4,7 +4,8 @@ __all__ = [
             'add_subplot_axes', 'divide_axes',
         # C2 : Special Mathematical Functions  & Classes
             'gaussian', 'gaussian_2d', 'lorentzian', 'erf', 'erf_shifted', 'erf_box',
-            'fourier_transform','real_fast_fourier_transform',
+            'fourier_transform','real_fast_fourier_transform', 'integrate',
+            'fourier_transform_v2',
         # C3 : Special Physics Related Functions & Classes
             'cst', 'FermiFunction', 'ThomasFermi_harmonic', 'FermiDirac',
             'betamu2n', 'RabiResonance', 'thermal_wavelength', 'ldB',
@@ -229,6 +230,55 @@ def real_fast_fourier_transform(x, y):
     inputs (x, y) and returns (k, f(k))
     '''
     return (2*np.pi * np.fft.rfftfreq(y.shape[0], np.diff(x).min()), np.fft.rfft(y, norm='ortho') / np.pi)
+
+'''
+Integrate
+'''
+def integrate(x = None, y = None, a = None, b = None, supersampling=10):
+    '''
+    Integrate
+    Inputs:
+        x, y : 1d arrays of data, x could be None
+        a, b : integration limits, if None, edges are used
+        supersampling=10 : # times more points to be used for integration
+    '''
+    # If x is not provided
+    if (type(x) is type(None)):
+        return np.trapz(y=y)
+    # x is provided, deal with the limits
+    if type(a) is type(None): a = x[0]
+    if type(b) is type(None): b = x[-1]
+    # Take the integral
+    x_ = np.linspace(a, b, supersampling * len(x))
+    y_ = np.interp(x_, x, y)
+    return np.trapz(x=x_, y=y_)
+
+'''
+Fourier Transform
+'''
+def fourier_transform_v2(x=None, y=None, k=None, a=None, b=None):
+    '''
+    Inputs:
+        x, y : 1d arrays of data, if x is None, it is set to np.arange(len(y))
+        k : list of array of k values to calculate FT at, f.e. n*(pi/L)
+            if k is None, k= 0.5 * (2 pi) * np.fft.fftfreq(y.shape[0], np.diff(x)[0])
+        a, b : limits of the 'box' for the FT, these are the integration limits
+            if None, edges of x are used
+
+    Fourier Transform : f(k) = prefactor * int_dx {f(x)*exp(-ikx)}
+    prefactor is 2/L if k~=0, and 1/L for k==0.
+    '''
+    if type(x) is type(None): x = np.arange(len(y))
+    if type(k) is type(None): k = 0.5 * (2*np.pi) * np.fft.rfftfreq(y.shape[0], np.diff(x)[0])
+    if type(a) is type(None): a = x[0]
+    if type(b) is type(None): b = x[-1]
+    L = b - a
+    ft = np.zeros(shape=len(k), dtype=np.complex64)
+    for i in range(len(k)):
+        ft[i] = 2/L * integrate(x, y * np.exp(1j * k[i] * x), a, b)
+        if k[i]==0: ft[i] = ft[i]/2
+    return [k, ft]
+
 
 ################################################################################
 ################################################################################
@@ -2775,33 +2825,33 @@ def binbyx(*args, **kwargs):
     sectsdef = [x_min,x_max]
     # Load inputs
     bins = kwargs.get('bins',binsdef)
-    if type(bins) is tuple: bins = list(bins)
+    # if type(bins) is tuple: bins = list(bins)
     step = kwargs.get('step',None)
-    if step == None: step = kwargs.get('steps',stepdef)
-    if type(step) is tuple: step = list(step)
+    if step is None: step = kwargs.get('steps',stepdef)
+    # if type(step) is tuple: step = list(step)
     blank = kwargs.get('blank',None)
-    if blank == None: blank = kwargs.get('blanks',blankdef)
+    if blank is None: blank = kwargs.get('blanks',blankdef)
     sects = kwargs.get('sects',None)
-    if sects == None: sects = kwargs.get('edges',None)
-    if sects == None: sects = kwargs.get('edge',None)
-    if sects == None: sects = kwargs.get('breaks',None)
-    if sects == None: sects = kwargs.get('sect',sectsdef)
-    if type(sects) is tuple: sects = list(sects)
+    if sects is None: sects = kwargs.get('edges',None)
+    if sects is None: sects = kwargs.get('edge',None)
+    if sects is None: sects = kwargs.get('breaks',None)
+    if sects is None: sects = kwargs.get('sect',sectsdef)
+    # if type(sects) is tuple: sects = list(sects)
     func = kwargs.get('func',np.mean)
     # Make it a list if it is not already
-    if type(bins) != list: bins = [bins]
-    if type(sects) != list: sects = [sects]
-    if type(step) != list: step = [step]
+    # if type(bins) is not list: bins = [bins]
+    # if type(sects) is not list: sects = [sects]
+    # if type(step) is not list: step = [step]
     # Pad sects with x_min, x_max if not provided
     if len(sects) == max(len(bins),len(step))-1: sects = [x_min,*sects,x_max]
     if len(sects) != max(len(bins),len(step))+1: print('Input Error: Place discription here!')
     # Prepare outputs
     binsarray = np.array([])
     # Compute bins array
-    if bins[0] != None: # bins are provided
+    if bins[0] is not None: # bins are provided
         for i,ibins in enumerate(bins):
             binsarray = np.append( binsarray, np.linspace(sects[i],sects[i+1],bins[i]+1)[0:-1] )
-    elif step[0] != None: # steps are provided
+    elif step[0] is not None: # steps are provided
         for i,istep in enumerate(step):
             binsarray = np.append( binsarray, np.arange(sects[i],sects[i+1],step[i]) )
     else: # nothing was provided, default case
