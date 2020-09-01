@@ -12,7 +12,7 @@ __all__ = [
             'density_ideal', 'density_virial', 'density_unitary', 'density_unitary_hybrid',
         # C4 : Special Experiment Related Functions  & Classes : box_edge functions
             'ThomasFermiCentering', 'FermiDiracFit', 'box_sharpness', 'interp_od',
-            'volt2rabi', 'rabi2volt',
+            'volt2rabi', 'rabi2volt', 'box_bec1',
         # C5 : Image Analysis Related
             'get_cropi', 'get_roi', 'get_od', 'fix_od', 'get_usable_pixels', 'com',
             'plot_crop', 'Image', 'XSectionHybrid', 'Hybrid_Image', 'atom_num_filter',
@@ -21,7 +21,7 @@ __all__ = [
             'bin_data',
         # C7 : Numerical Functions :
             'numder_poly', 'numder_gaussian_filter', 'subsampleavg', 'subsample2D',
-            'binbyx', 'savitzky_golay', 'surface_fit', 'curve_fit',
+            'binbyx', 'savitzky_golay', 'surface_fit', 'curve_fit', 'BoxFit',
             'area_partial_ellipse',
         # C8 : GUI Related
             'qTextEditDictIO',
@@ -1052,7 +1052,16 @@ def rabi2volt(rabi):
     def funSolve(v): return rabi - volt2rabi(v)
     return scipy.optimize.brentq(funSolve, 0.1, 5)
 
-
+'''
+box shape : erf top hat + internal structure
+============================================
+'''
+def box_bec1(x, x1, x2, s1=1., s2=1., n0=1., a1=0., a2=0., a3=0., offset=0., gradient=0.):
+    '''
+    box function used for fitting a realistic box
+    '''
+    unitBox = erf(x, x0=x1, sigma=s1, amp=0.5) + erf(-x, x0=-x2, sigma=s2, amp=0.5)
+    return unitBox * (n0 + a1*x + a2*x**2 + a3*x**3) + (offset + gradient * x)
 
 ################################################################################
 ################################################################################
@@ -1559,6 +1568,8 @@ class Image:
         plt.colorbar(im, cax=ax_cb)
         ax[1].set(title='Cropped, Rotated, Subsampled')
         ax[1].plot([w, w, s[1] - w, s[1] - w, w], [w, s[0] - w, s[0] - w, w, w], 'w-')
+        ax[1].plot([0, self.od_raw.shape[1]], [0, self.od_raw.shape[0]], 'w-')
+        ax[1].plot([0, self.od_raw.shape[1]], [self.od_raw.shape[0], 0], 'w-')
         ax[1].set(xlim=[0,s[1]], ylim=[0,s[0]])
         fig1.tight_layout()
 
@@ -2565,7 +2576,7 @@ def images_from_clipboard(df=None, x='time', params=[], image_func=Image, downlo
     # Add Images
     download = list(download)
     df.download = (df.A & ('A' in download)) | (df.B & ('B' in download)) | (df.S & ('S' in download))
-    for n in tqdm(df.index.values):
+    for n in tqdm(df.index.values, desc='Downloading Images', leave=display):
         if df.loc[n,'download'] and (type(df.loc[n,'image']) != image_func): df.loc[n, 'image'] = image_func(n)
 
     # Remove entries that are not in download
@@ -2828,7 +2839,6 @@ def binbyx(*args, **kwargs):
     # if type(bins) is tuple: bins = list(bins)
     step = kwargs.get('step',None)
     if step is None: step = kwargs.get('steps',stepdef)
-    # if type(step) is tuple: step = list(step)
     blank = kwargs.get('blank',None)
     if blank is None: blank = kwargs.get('blanks',blankdef)
     sects = kwargs.get('sects',None)
@@ -2836,12 +2846,11 @@ def binbyx(*args, **kwargs):
     if sects is None: sects = kwargs.get('edge',None)
     if sects is None: sects = kwargs.get('breaks',None)
     if sects is None: sects = kwargs.get('sect',sectsdef)
-    # if type(sects) is tuple: sects = list(sects)
     func = kwargs.get('func',np.mean)
-    # Make it a list if it is not already
-    # if type(bins) is not list: bins = [bins]
-    # if type(sects) is not list: sects = [sects]
-    # if type(step) is not list: step = [step]
+    # Make it an array if it is not already
+    if np.isscalar(bins): bins = np.array([bins])
+    if np.isscalar(sects): sects = np.array([sects])
+    if np.isscalar(step): step = np.array([step])
     # Pad sects with x_min, x_max if not provided
     if len(sects) == max(len(bins),len(step))-1: sects = [x_min,*sects,x_max]
     if len(sects) != max(len(bins),len(step))+1: print('Input Error: Place discription here!')
@@ -3210,13 +3219,13 @@ class curve_fit:
             ys.append(self(x, **{k : self.fv[k] - self.fe[k]}))
             ys.append(self(x, **{k : self.fv[k] + self.fe[k]}))
         return (np.min(ys, axis=0), np.max(ys, axis=0))
-    def plot_fitdata(self, ax=None, x=None):
+    def plot_fitdata(self, ax=None, x=None, fmtData='r.-', fmtFit='k-'):
         '''Plot data and the fitline on ax (or new figure) with x (or self.xp) for fitline'''
         if type(x) is type(None): x = self.xp
         if type(ax) is type(None): fig, ax = plt.subplots()
         sorti = np.argsort(self.x)
-        ax.errorbar(self.x[sorti], self.y[sorti], self.y_err[sorti], fmt='r.-')
-        ax.plot(x, self(x), 'k')
+        ax.plot(x, self(x), fmtFit)
+        ax.errorbar(self.x[sorti], self.y[sorti], self.y_err[sorti], fmt=fmtData)
         return ax
     def plot_residuals(self, ax=None):
         '''Plot residual with vertical lines and zero line on ax (or new figure)'''
@@ -3231,26 +3240,26 @@ class curve_fit:
         if type(ax) is type(None): fig, ax = plt.subplots()
         ax.hist(self.y-self(), orientation=orientation)
         return ax
-    def plot_fiterrors(self, ax=None, x=None, using=[]):
+    def plot_fiterrors(self, ax=None, x=None, using=[], fmtData='r.-', fmtFit='k-'):
         '''Plot a band of y representing fit errors : on ax (or a new figure) with x (or self.ax) and with using list (or all) of fit variables'''
         if type(x) is type(None): x = self.xp
-        ax = self.plot_fitdata(ax)
+        ax = self.plot_fitdata(ax, x, fmtData, fmtFit)
         ax.fill_between(x, *self.yband(x=x, using=using), color='g', alpha=0.25)
         return ax
-    def plot(self, ax=None, x=None, fiterrors=True, using=[], divider=0.25):
+    def plot(self, ax=None, x=None, fiterrors=True, using=[], divider=0.25, fmtData='r.-', fmtFit='k-'):
         '''Plot data with fitline and '''
         if type(ax) is type(None): ax = plt.subplots(figsize=[5,5])[1]
         if type(x) is type(None): x = self.xp
         (ax1, ax2) = divide_axes(ax, divider=divider, direction='vertical', shared=True)
-        if fiterrors: self.plot_fiterrors(ax=ax1, x=x, using=using)
-        else: self.plot_fitdata(ax=ax1, x=x)
+        if fiterrors: self.plot_fiterrors(ax=ax1, x=x, using=using, fmtData=fmtData, fmtFit=fmtFit)
+        else: self.plot_fitdata(ax=ax1, x=x, fmtData=fmtData, fmtFit=fmtFit)
         self.plot_residuals(ax2)
         return (ax1, ax2)
     def bootstrap(self, runs=1000, plot=False, info=False, disp=False):
         # Fit runs many times
         fvs = []
         failed_count = 0
-        for i in tqdm(range(runs)):
+        for i in tqdm(range(runs), desc='Bootstrapping', leave=plot):
             usei = np.arange(self.x.size)
             usei = np.random.choice(usei, usei.size)
             try:
@@ -3303,6 +3312,34 @@ class curve_fit:
             ax[i].set(xlim=xlim)
         plt.tight_layout()
         return ax
+
+'''
+Fitting routine for box_bec1
+============================
+'''
+class BoxFit(curve_fit):
+    def __init__(self, nz, guess=None, **kwargs):
+        if guess is None:
+            s0, L0, n0 = 3e-6, 92e-6, np.nanmean(nz.trim(xlim=[-10e-6, 10e-6]).y)
+            guess = [-L0/2, L0/2, s0, s0, n0,
+                     -0.1*n0/L0, -0.1*n0/L0**2, -0.1*n0/L0**3,
+                     -0.01*n0, -0.01*n0/L0]
+        super(BoxFit, self).__init__(fitfun=box_bec1, guess=guess,
+            x_data=nz.x, y_data=nz.y, **kwargs)
+        self.nz_original = nz
+        self.guess = guess
+
+    @property
+    def nz(self):
+        # Subtracting off the offset and gradient
+        return self.nz_original.copy(y = self.nz_original.y - self(n0=0, a1=0, a2=0, a3=0))
+
+    @property
+    def L(self):
+        L = self.fv['x2'] - self.fv['x1']
+        Le = np.sqrt(self.fe['x2']**2 + self.fe['x2']**2)
+        Lep = Le/L*100
+        return np.array([L, Le, Lep])
 
 '''
 Area of Partial ellipse
