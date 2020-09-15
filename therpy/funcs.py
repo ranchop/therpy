@@ -1639,7 +1639,9 @@ class XSectionHybrid:
         # Get fitting range
         self.z_edges, self.z_center = self.circle_fitting_range()
         # Fit circles
-        self.center_fit, self.radius_fit = self.fit_circles()
+        outp  = self.fit_circles()
+        self.center_fit, self.radius_fit = outp[0:2]
+        self.center_fit_error, self.radius_fit_error = outp[2:4]
         # Extrapolate
         self.z, self.center, self.radius = self.extrapolate()
 
@@ -1665,7 +1667,7 @@ class XSectionHybrid:
         z_center = z_edges[0:-1] + (z_edges[1]-z_edges[0])/2.0 - 0.5 # half because slice doesn't include end point
         return (z_edges, z_center)
 
-    def fit_circles(self):
+    def fit_circles(self, diagnose=False):
         '''
         Fit circles to the range specified
         Measure center and radius at each point
@@ -1674,6 +1676,7 @@ class XSectionHybrid:
         z_center, z_edges = self.z_center, self.z_edges
         # Prepare arrays
         center, radius = np.zeros_like(z_center), np.zeros_like(z_center)
+        center_error, radius_error = np.zeros_like(z_center), np.zeros_like(z_center)
         # Replace infinities with nan
         use_data = self.data.copy()
         use_data[~np.isfinite(use_data)] = np.nan
@@ -1690,12 +1693,15 @@ class XSectionHybrid:
             c = Curve(y = np.nanmean(use_data[z_edges[i]:z_edges[i+1],:], axis=0))
             c.removenan()
             guess = (fitres_gauss[0], fitres_gauss[1]*1.75, np.max(c.y), fitres_gauss[3])
-            fitres = c.fit(self.fitfun_circle, guess, plot=False)[0]
+            fitres, fiterr = c.fit(self.fitfun_circle, guess, plot=diagnose)[0:2]
             if fitres[0] == guess[0]:
                 center[i], radius[i] = np.nan, np.nan
-            else: center[i], radius[i] = fitres[0], fitres[1]
+                center_error[i], radius_error[i] = np.nan, np.nan
+            else:
+                center[i], radius[i] = fitres[0], fitres[1]
+                center_error[i], radius_error[i] = fiterr[0], fiterr[1]
         # return results
-        return (center, radius)
+        return (center, radius, center_error, radius_error)
 
     def extrapolate(self):
         '''
@@ -3079,7 +3085,7 @@ class curve_fit:
         ### Verify inputs
         if not callable(fitfun): print("provided fitfun is not valid python function!")
         # If y_err is not provided, set it to some small number, smaller than the smallers of y
-        if type(y_err) == type(None): y_err = np.ones_like(x_data)*np.min(np.abs(y_data))/100000
+        if type(y_err) == type(None): y_err = np.ones_like(x_data)*np.mean(np.abs(y_data))/1000
         # Make sure noise_level is provided if loss_function is not 'linear'
         if loss_function not in ['linear','soft_l1','huber','cauchy','arctan']:
             print("provided loss_function isn't one of 5 options!")
