@@ -1973,7 +1973,9 @@ class Hybrid_Image(Image):
 
         # Find Center i0
         def fitfun(x, x0, rad, amp, a0):
-            y = np.real((1-((x-x0)/(rad))**2)**(3/2))
+            y = (1-((x-x0)/(rad))**2)
+            y[y<0] = 0
+            y = np.real(y**(3/2))
             y[~np.isfinite(y)] = 0
             return amp*y + a0
         guess = [ni.x[ni.y==ni.maxy][0], ni.x.size/5, ni.maxy, np.mean(ni.y[0:5])]
@@ -2067,7 +2069,7 @@ class Hybrid_Image(Image):
         c = Curve(TTF, self.N)
         c.removenan()
         c = c.sortbyx().trim(xlim=[0, Tlim]).binbyx(step=Tstep, sects=[0,Tlim], func=np.nansum, center_x=True)
-        ax[3].bar(left = c.x - Tstep/2, height = c.y / np.nansum(c.y * Tstep), width=Tstep)
+        ax[3].bar(c.x, height = c.y / np.nansum(c.y * Tstep), width=Tstep)
         ax[3].plot([0.17]*2, [0, 1], 'k--', alpha=0.5)
         ax[3].set(xlabel=r'$T/T_F$', ylabel=r'Fraction of Atoms', xlim=(0, Tlim), ylim=(0, np.nanmax(c.y / np.nansum(c.y * Tstep))*1.1))
 
@@ -3341,11 +3343,26 @@ class BoxFit(curve_fit):
         return self.nz_original.copy(y = self.nz_original.y - self(n0=0, a1=0, a2=0, a3=0))
 
     @property
+    def nz_centered(self):
+        # Subtracting off the offset and gradient, and centering the z
+        return self.nz_original.copy(
+            x = self.nz_original.x - self.z0[0],
+            y = self.nz_original.y - self(n0=0, a1=0, a2=0, a3=0)
+        )
+
+    @property
     def L(self):
         L = self.fv['x2'] - self.fv['x1']
-        Le = np.sqrt(self.fe['x2']**2 + self.fe['x2']**2)
+        Le = np.sqrt(self.fe['x2']**2 + self.fe['x1']**2)
         Lep = Le/L*100
         return np.array([L, Le, Lep])
+
+    @property
+    def z0(self):
+        z0 = (self.fv['x1'] + self.fv['x2']) / 2
+        z0e = np.sqrt(self.fe['x1']**2 + self.fe['x2']**2) / 2
+        z0ep = z0e / z0
+        return np.array([z0, z0e, z0ep])
 
 '''
 Area of Partial ellipse
