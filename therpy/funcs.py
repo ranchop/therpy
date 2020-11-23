@@ -300,17 +300,17 @@ class cst:
         # Fill in phsical constants
         self._fill_physical_constants()
         # Find the correct atom type and load its parameters
-        if self.var.get('atom', 'Li') is 'Li':
+        if self.var.get('atom', 'Li') == 'Li':
             self.LiD2()
-        elif self.var.get('atom') is 'LiD2':
+        elif self.var.get('atom') == 'LiD2':
             self.LiD2()
-        elif self.var.get('atom') is 'LiD1':
+        elif self.var.get('atom') == 'LiD1':
             self.LiD1()
-        elif self.var.get('atom') is 'Na':
+        elif self.var.get('atom') == 'Na':
             self.NaD2()
-        elif self.var.get('atom') is 'NaD2':
+        elif self.var.get('atom') == 'NaD2':
             self.NaD2()
-        elif self.var.get('atom') is 'NaD1':
+        elif self.var.get('atom') == 'NaD1':
             self.NaD1()
         else:
             pass  # raise error invalid atom type
@@ -2194,8 +2194,8 @@ class dictio:
     '''
     def __init__(self,*args,**kwargs):
         # Get data from the inputs
-        if len(args) is 1 and type(args[0]) is dict: self.data = args[0]
-        elif len(args) is 1 and type(args[0]) is str: self.data = self.fromfile(filepath=args[0])
+        if (len(args) == 1) and (type(args[0]) is dict): self.data = args[0]
+        elif (len(args) == 1) and (type(args[0]) is str): self.data = self.fromfile(filepath=args[0])
         elif "filepath" in kwargs.keys(): self.data = self.fromfile(filepath=kwargs['filepath'])
         else: self.data = kwargs
 
@@ -2979,16 +2979,16 @@ def surface_fit(*args, **kwargs):
     show = kwargs.get('show',False)
     if fun is None or guess is None: raise TypeError("surface_fit: Must provide kwargs fun and guess")
     # Get x,y,z,using from inputs
-    if len(args) is 0:
+    if len(args) == 0:
         return None
     elif len(args) <= 2:
         z = args[0]
-        using = np.ones_like(z, dtype=np.bool) if len(args) is 1 else args[1].astype(np.bool)
+        using = np.ones_like(z, dtype=np.bool) if len(args) == 1 else args[1].astype(np.bool)
         x, y = np.meshgrid(np.arange(z.shape[1]), np.arange(z.shape[0]))
     elif len(args) <= 4:
         x, y, z = args[0:3]
-        using = np.ones_like(z, dtype=np.bool) if len(args) is 3 else args[3].astype(np.bool)
-        if len(x.shape) is 1: x, y = np.meshgrid(x, y)
+        using = np.ones_like(z, dtype=np.bool) if len(args) == 3 else args[3].astype(np.bool)
+        if len(x.shape) == 1: x, y = np.meshgrid(x, y)
     else:
         raise ValueError
 
