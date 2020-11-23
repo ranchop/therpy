@@ -57,6 +57,8 @@ import scipy.integrate
 import scipy.special
 import scipy.interpolate
 
+import skimage.transform
+
 from . import imageio
 
 
@@ -1470,8 +1472,8 @@ class Image:
                 Ii = Ii[cropi]
                 If = If[cropi]
             elif (task == 'rotate') and (self.rotate != 0):
-                Ii = scipy.misc.imrotate(Ii, angle=self.rotate, interp=self.rotate_method) # Takes 250 ms
-                If = scipy.misc.imrotate(If, angle=self.rotate, interp=self.rotate_method) # takes 250 ms
+                Ii = skimage.transform.rotate(Ii, angle=self.rotate) # Takes 250 ms For outdated scipy.misc.imrotate, interp=self.rotate_method
+                If = skimage.transform.rotate(If, angle=self.rotate) # takes 250 ms For outdated scipy.misc.imrotate, interp=self.rotate_method
             elif (task == 'subsample') and (self.subsample != 1):
                 Ii = subsample2D(Ii, bins=[self.subsample, self.subsample]) # 1 ms
                 If = subsample2D(If, bins=[self.subsample, self.subsample]) # 1 ms
@@ -2323,6 +2325,10 @@ class Curve:
         return self.var.get('y', np.array([]))
 
     @property
+    def ye(self):
+        return self.var.get('ye', np.array([]))
+
+    @property
     def yfit(self):
         return self.var.get('yfit', None)
 
@@ -2353,6 +2359,10 @@ class Curve:
     @property
     def plotdata(self):
         return (self.x / self.xscale, self.y / self.yscale)
+
+    @property
+    def plotband(self):
+        return (self.x/self.xscale, (self.y-self.ye)/self.yscale, (self.y+self.ye)/self.yscale)
 
     @property
     def xscale(self):
