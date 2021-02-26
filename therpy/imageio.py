@@ -49,8 +49,8 @@ def backuploc(lab='bec1'):
     # Platform dependent storage
     if _platform == 'darwin':
         # Mac OS X
-        backuppath = os.path.join(basepath, 'Documents', 'My Programs', 'Raw Imagedata Temporary')
-        # backuppath = os.path.join(basepath, 'Documents Local', 'My Programs', 'Raw Imagedata Temporary')
+        # backuppath = os.path.join(basepath, 'Documents', 'My Programs', 'Raw Imagedata Temporary')
+        backuppath = os.path.join(basepath, 'Documents Local', 'My Programs', 'Raw Imagedata Temporary')
     elif _platform == 'win32' or _platform == 'cygwin':
         # Windows
         backuppath = os.path.join(basepath, 'Documents', 'My Programs', 'Raw Imagedata Temporary',lab)
@@ -176,7 +176,7 @@ def imagename2imagepath(imagename, lab='bec1', redownload=False):
         return imagepath_backup
 
     if os.path.exists(imagepath_backup_yesterday ) and not redownload:
-        return imagepath_backup_yesterday 
+        return imagepath_backup_yesterday
 
     # Find the base path depending on the platform
     if _platform == 'darwin':
