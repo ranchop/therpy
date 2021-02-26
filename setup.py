@@ -3,20 +3,15 @@ from setuptools import setup
 
 setup(
     name='therpy',
-    version='0.3.8',
+    version='0.4',
     packages=['therpy',],
 
     # Package requirements
-    install_requires=['astropy',
-                        'tqdm',
-                        'bec1db',
-                        'pandas',
-                        'matplotlib',
-                        'scipy'],
+    install_requires=['tqdm', 'astropy'],
 
     # metadata
     author='Parth Patel',
-    author_email='ranchop@gmail.com',
+    author_email='ranchop09@gmail.com',
     license='Open Source',
 )
 

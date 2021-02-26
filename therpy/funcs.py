@@ -4,22 +4,24 @@ __all__ = [
             'add_subplot_axes', 'divide_axes',
         # C2 : Special Mathematical Functions  & Classes
             'gaussian', 'gaussian_2d', 'lorentzian', 'erf', 'erf_shifted', 'erf_box',
-            'fourier_transform','real_fast_fourier_transform',
+            'fourier_transform','real_fast_fourier_transform', 'integrate',
+            'fourier_transform_v2',
         # C3 : Special Physics Related Functions & Classes
             'cst', 'FermiFunction', 'ThomasFermi_harmonic', 'FermiDirac',
             'betamu2n', 'RabiResonance', 'thermal_wavelength', 'ldB',
-            'density_ideal', 'density_virial', 'density_unitary',
+            'density_ideal', 'density_virial', 'density_unitary', 'density_unitary_hybrid',
         # C4 : Special Experiment Related Functions  & Classes : box_edge functions
             'ThomasFermiCentering', 'FermiDiracFit', 'box_sharpness', 'interp_od',
-            'volt2rabi', 'rabi2volt',
+            'volt2rabi', 'rabi2volt', 'box_bec1',
         # C5 : Image Analysis Related
             'get_cropi', 'get_roi', 'get_od', 'fix_od', 'get_usable_pixels', 'com',
             'plot_crop', 'Image', 'XSectionHybrid', 'Hybrid_Image', 'atom_num_filter',
-        # C6 : Datatype, I/O related functions : bin_data
+        # C6 : Datatype, I/O related functions :
             'getFileList', 'getpath', 'dictio', 'sdict', 'Curve', 'images_from_clipboard',
+            'bin_data',
         # C7 : Numerical Functions :
             'numder_poly', 'numder_gaussian_filter', 'subsampleavg', 'subsample2D',
-            'binbyx', 'savitzky_golay', 'surface_fit', 'curve_fit',
+            'binbyx', 'savitzky_golay', 'surface_fit', 'curve_fit', 'BoxFit',
             'area_partial_ellipse',
         # C8 : GUI Related
             'qTextEditDictIO',
@@ -36,8 +38,11 @@ import urllib.request
 import numba
 import pickle
 import IPython.display
-from tqdm import tqdm_notebook as tqdm
+import tqdm.notebook
+tqdm = tqdm.notebook.tqdm
 
+import bec1db as bec1db_package
+# from . import dbreader as bec1db_package # for BEC1
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -51,6 +56,8 @@ import scipy.optimize
 import scipy.integrate
 import scipy.special
 import scipy.interpolate
+
+import skimage.transform
 
 from . import imageio
 
@@ -168,7 +175,8 @@ def lorentzian(x, x0=0., gamma=1., amp=1., offset=0., gradient=0.):
     lorentzian function : (x, x0=0., gamma=1., amp=1., offset=0., gradient=0.)
     gamma = FWHM : Full Width at Half Maximum
     amp is the amplitude at the center
-    This function is not normalized to 1.
+    This function is not normalized to 1
+    Area under this Lorentzian is (A * Gamma * pi / 2) with offset and gradient = 0.
     '''
     return amp * ((gamma/2)**2) / ((x-x0)**2 + (gamma/2)**2) + offset + gradient * x
 
@@ -211,7 +219,7 @@ Fourier Transform
 def fourier_transform(x, y, k=None):
     '''
     Fourier Transform : f(k) = int_dx {f(x)*exp(-ikx)}
-    Normalization : Multiply by 2 / L for proper normalization
+    Normalization : Multiply by 2 / L for proper normalization. Except k=0, which needs 1/L
     inputs (x, y, k=None) returns (k, f(k))
     default k = 100 points from k = 0 to max_k/2
     '''
@@ -224,6 +232,55 @@ def real_fast_fourier_transform(x, y):
     inputs (x, y) and returns (k, f(k))
     '''
     return (2*np.pi * np.fft.rfftfreq(y.shape[0], np.diff(x).min()), np.fft.rfft(y, norm='ortho') / np.pi)
+
+'''
+Integrate
+'''
+def integrate(x = None, y = None, a = None, b = None, supersampling=10):
+    '''
+    Integrate
+    Inputs:
+        x, y : 1d arrays of data, x could be None
+        a, b : integration limits, if None, edges are used
+        supersampling=10 : # times more points to be used for integration
+    '''
+    # If x is not provided
+    if (type(x) is type(None)):
+        return np.trapz(y=y)
+    # x is provided, deal with the limits
+    if type(a) is type(None): a = x[0]
+    if type(b) is type(None): b = x[-1]
+    # Take the integral
+    x_ = np.linspace(a, b, supersampling * len(x))
+    y_ = np.interp(x_, x, y)
+    return np.trapz(x=x_, y=y_)
+
+'''
+Fourier Transform
+'''
+def fourier_transform_v2(x=None, y=None, k=None, a=None, b=None):
+    '''
+    Inputs:
+        x, y : 1d arrays of data, if x is None, it is set to np.arange(len(y))
+        k : list of array of k values to calculate FT at, f.e. n*(pi/L)
+            if k is None, k= 0.5 * (2 pi) * np.fft.fftfreq(y.shape[0], np.diff(x)[0])
+        a, b : limits of the 'box' for the FT, these are the integration limits
+            if None, edges of x are used
+
+    Fourier Transform : f(k) = prefactor * int_dx {f(x)*exp(-ikx)}
+    prefactor is 2/L if k~=0, and 1/L for k==0.
+    '''
+    if type(x) is type(None): x = np.arange(len(y))
+    if type(k) is type(None): k = 0.5 * (2*np.pi) * np.fft.rfftfreq(y.shape[0], np.diff(x)[0])
+    if type(a) is type(None): a = x[0]
+    if type(b) is type(None): b = x[-1]
+    L = b - a
+    ft = np.zeros(shape=len(k), dtype=np.complex64)
+    for i in range(len(k)):
+        ft[i] = 2/L * integrate(x, y * np.exp(1j * k[i] * x), a, b)
+        if k[i]==0: ft[i] = ft[i]/2
+    return [k, ft]
+
 
 ################################################################################
 ################################################################################
@@ -245,17 +302,17 @@ class cst:
         # Fill in phsical constants
         self._fill_physical_constants()
         # Find the correct atom type and load its parameters
-        if self.var.get('atom', 'Li') is 'Li':
+        if self.var.get('atom', 'Li') == 'Li':
             self.LiD2()
-        elif self.var.get('atom') is 'LiD2':
+        elif self.var.get('atom') == 'LiD2':
             self.LiD2()
-        elif self.var.get('atom') is 'LiD1':
+        elif self.var.get('atom') == 'LiD1':
             self.LiD1()
-        elif self.var.get('atom') is 'Na':
+        elif self.var.get('atom') == 'Na':
             self.NaD2()
-        elif self.var.get('atom') is 'NaD2':
+        elif self.var.get('atom') == 'NaD2':
             self.NaD2()
-        elif self.var.get('atom') is 'NaD1':
+        elif self.var.get('atom') == 'NaD1':
             self.NaD1()
         else:
             pass  # raise error invalid atom type
@@ -269,12 +326,14 @@ class cst:
         self.f = 446.799677e12
         self.tau = 27.102e-9
         self.mass = 9.988346 * 10 ** -27
+        self.Isat = 25.4 # W/m^2
         self.atomtype = 'Lithium 6, D2 Line'
 
     def LiD1(self):
         self.f = 446.789634e12
         self.tau = 27.102e-9
         self.mass = 9.988346 * 10 ** -27
+        self.Isat = 75.9 # W/m^2
         self.atomtype = 'Lithium 6, D1 Line'
 
     def NaD2(self):
@@ -502,7 +561,7 @@ def FermiFunctionLargeZ_(m, logz):
     Details about the coefficients are in Mathematic file + Mehran Kardar's notes at
     http://ocw.mit.edu/courses/physics/8-333-statistical-mechanics-i-statistical-mechanics-of-particles-fall-2013/lecture-notes/MIT8_333F13_Lec24.pdf
     '''
-    return logz**m / scipy.misc.factorial(m) * (1 +
+    return logz**m / scipy.special.factorial(m) * (1 +
         1.644934067 / logz ** 2 * m * (m - 1) +
         1.894065659 / logz ** 4 * m * (m - 1) * (m - 2) * (m - 3) +
         1.971102183 / logz ** 6 * m * (m - 1) * (m - 2) * (m - 3) * (m - 4) * (m - 5) +
@@ -688,6 +747,11 @@ def density_unitary(kT, mu):
     if mu/kT > 4: return cst_.EF2n(mu / precompiled_data_EoS_Density_Generator[0](kT/mu), neg=True)
     if mu/kT > -0.5: return cst_.EF2n(mu / precompiled_data_EoS_Density_Generator[1](mu/kT), neg=True)
     return density_virial(kT, mu)
+
+def density_unitary_hybrid(z, kT_kHz=0, mu0_kHz=1, trap_f=23.9, z0=0, fudge=1, offset=0, gradient=0):
+    trap_w = twopi * trap_f
+    mu = (mu0_kHz * kHz) - (1/2 * cst_LiD2.mass * (trap_w**2) * (z-z0)**2)
+    return density_unitary(kT_kHz * kHz, mu) * fudge + offset + gradient * (z-z0)
 
 
 ################################################################################
@@ -990,7 +1054,16 @@ def rabi2volt(rabi):
     def funSolve(v): return rabi - volt2rabi(v)
     return scipy.optimize.brentq(funSolve, 0.1, 5)
 
-
+'''
+box shape : erf top hat + internal structure
+============================================
+'''
+def box_bec1(x, x1, x2, s1=1., s2=1., n0=1., a1=0., a2=0., a3=0., offset=0., gradient=0.):
+    '''
+    box function used for fitting a realistic box
+    '''
+    unitBox = erf(x, x0=x1, sigma=s1, amp=0.5) + erf(-x, x0=-x2, sigma=s2, amp=0.5)
+    return unitBox * (n0 + a1*x + a2*x**2 + a3*x**3) + (offset + gradient * x)
 
 ################################################################################
 ################################################################################
@@ -1412,8 +1485,8 @@ class Image:
                 Ii = Ii[cropi]
                 If = If[cropi]
             elif (task == 'rotate') and (self.rotate != 0):
-                Ii = scipy.misc.imrotate(Ii, angle=self.rotate, interp=self.rotate_method) # Takes 250 ms
-                If = scipy.misc.imrotate(If, angle=self.rotate, interp=self.rotate_method) # takes 250 ms
+                Ii = skimage.transform.rotate(Ii, angle=self.rotate) # Takes 250 ms For outdated scipy.misc.imrotate, interp=self.rotate_method
+                If = skimage.transform.rotate(If, angle=self.rotate) # takes 250 ms For outdated scipy.misc.imrotate, interp=self.rotate_method
             elif (task == 'subsample') and (self.subsample != 1):
                 Ii = subsample2D(Ii, bins=[self.subsample, self.subsample]) # 1 ms
                 If = subsample2D(If, bins=[self.subsample, self.subsample]) # 1 ms
@@ -1510,6 +1583,8 @@ class Image:
         plt.colorbar(im, cax=ax_cb)
         ax[1].set(title='Cropped, Rotated, Subsampled')
         ax[1].plot([w, w, s[1] - w, s[1] - w, w], [w, s[0] - w, s[0] - w, w, w], 'w-')
+        ax[1].plot([0, self.od_raw.shape[1]], [0, self.od_raw.shape[0]], 'w-')
+        ax[1].plot([0, self.od_raw.shape[1]], [self.od_raw.shape[0], 0], 'w-')
         ax[1].set(xlim=[0,s[1]], ylim=[0,s[0]])
         fig1.tight_layout()
 
@@ -1579,7 +1654,9 @@ class XSectionHybrid:
         # Get fitting range
         self.z_edges, self.z_center = self.circle_fitting_range()
         # Fit circles
-        self.center_fit, self.radius_fit = self.fit_circles()
+        outp  = self.fit_circles()
+        self.center_fit, self.radius_fit = outp[0:2]
+        self.center_fit_error, self.radius_fit_error = outp[2:4]
         # Extrapolate
         self.z, self.center, self.radius = self.extrapolate()
 
@@ -1605,7 +1682,7 @@ class XSectionHybrid:
         z_center = z_edges[0:-1] + (z_edges[1]-z_edges[0])/2.0 - 0.5 # half because slice doesn't include end point
         return (z_edges, z_center)
 
-    def fit_circles(self):
+    def fit_circles(self, diagnose=False):
         '''
         Fit circles to the range specified
         Measure center and radius at each point
@@ -1614,6 +1691,7 @@ class XSectionHybrid:
         z_center, z_edges = self.z_center, self.z_edges
         # Prepare arrays
         center, radius = np.zeros_like(z_center), np.zeros_like(z_center)
+        center_error, radius_error = np.zeros_like(z_center), np.zeros_like(z_center)
         # Replace infinities with nan
         use_data = self.data.copy()
         use_data[~np.isfinite(use_data)] = np.nan
@@ -1630,12 +1708,15 @@ class XSectionHybrid:
             c = Curve(y = np.nanmean(use_data[z_edges[i]:z_edges[i+1],:], axis=0))
             c.removenan()
             guess = (fitres_gauss[0], fitres_gauss[1]*1.75, np.max(c.y), fitres_gauss[3])
-            fitres = c.fit(self.fitfun_circle, guess, plot=False)[0]
+            fitres, fiterr = c.fit(self.fitfun_circle, guess, plot=diagnose)[0:2]
             if fitres[0] == guess[0]:
                 center[i], radius[i] = np.nan, np.nan
-            else: center[i], radius[i] = fitres[0], fitres[1]
+                center_error[i], radius_error[i] = np.nan, np.nan
+            else:
+                center[i], radius[i] = fitres[0], fitres[1]
+                center_error[i], radius_error[i] = fiterr[0], fiterr[1]
         # return results
-        return (center, radius)
+        return (center, radius, center_error, radius_error)
 
     def extrapolate(self):
         '''
@@ -1907,7 +1988,9 @@ class Hybrid_Image(Image):
 
         # Find Center i0
         def fitfun(x, x0, rad, amp, a0):
-            y = np.real((1-((x-x0)/(rad))**2)**(3/2))
+            y = (1-((x-x0)/(rad))**2)
+            y[y<0] = 0
+            y = np.real(y**(3/2))
             y[~np.isfinite(y)] = 0
             return amp*y + a0
         guess = [ni.x[ni.y==ni.maxy][0], ni.x.size/5, ni.maxy, np.mean(ni.y[0:5])]
@@ -2001,7 +2084,7 @@ class Hybrid_Image(Image):
         c = Curve(TTF, self.N)
         c.removenan()
         c = c.sortbyx().trim(xlim=[0, Tlim]).binbyx(step=Tstep, sects=[0,Tlim], func=np.nansum, center_x=True)
-        ax[3].bar(left = c.x - Tstep/2, height = c.y / np.nansum(c.y * Tstep), width=Tstep)
+        ax[3].bar(c.x, height = c.y / np.nansum(c.y * Tstep), width=Tstep)
         ax[3].plot([0.17]*2, [0, 1], 'k--', alpha=0.5)
         ax[3].set(xlabel=r'$T/T_F$', ylabel=r'Fraction of Atoms', xlim=(0, Tlim), ylim=(0, np.nanmax(c.y / np.nansum(c.y * Tstep))*1.1))
 
@@ -2022,7 +2105,7 @@ def atom_num_filter(df, keep=0.10, offset=0.0, using='ABS', display=False, plot=
     Returns the list of ax object
     '''
     # Filter
-    df.total_atoms = None
+    df.total_atoms = 0
     for n,r in df[df.download].iterrows():
         df.loc[n, 'total_atoms'] = r.image.total_atoms
     median_numbers = np.median(df[df.download].total_atoms)
@@ -2050,9 +2133,9 @@ def atom_num_filter(df, keep=0.10, offset=0.0, using='ABS', display=False, plot=
                   title='Fudge {}; Mean {:.3f} million'.format(fudge, mean_numbers/1e6))
 
         # Histogram plot
-        ax[1].hist(df[df.use].total_atoms.values / 1e6)
+        ax[1].hist(df[df.use].total_atoms.values / 1e6, bins=10)
         ax[1].axvline(mean_numbers/1e6, linestyle='-', c='k', alpha=0.7)
-        ax[1].set(xlabel='Time (minutes)', ylabel='Atom Number (million)',
+        ax[1].set(xlabel='Atom Number (million)', ylabel='Counts',
                   title=r'Atom Num {:.3f} $\pm$ {:.3f} million'.format(mean_numbers/1e6, std_numbers/1e6))
 
     return ax
@@ -2126,8 +2209,8 @@ class dictio:
     '''
     def __init__(self,*args,**kwargs):
         # Get data from the inputs
-        if len(args) is 1 and type(args[0]) is dict: self.data = args[0]
-        elif len(args) is 1 and type(args[0]) is str: self.data = self.fromfile(filepath=args[0])
+        if (len(args) == 1) and (type(args[0]) is dict): self.data = args[0]
+        elif (len(args) == 1) and (type(args[0]) is str): self.data = self.fromfile(filepath=args[0])
         elif "filepath" in kwargs.keys(): self.data = self.fromfile(filepath=kwargs['filepath'])
         else: self.data = kwargs
 
@@ -2255,6 +2338,10 @@ class Curve:
         return self.var.get('y', np.array([]))
 
     @property
+    def ye(self):
+        return self.var.get('ye', np.array([]))
+
+    @property
     def yfit(self):
         return self.var.get('yfit', None)
 
@@ -2285,6 +2372,10 @@ class Curve:
     @property
     def plotdata(self):
         return (self.x / self.xscale, self.y / self.yscale)
+
+    @property
+    def plotband(self):
+        return (self.x/self.xscale, (self.y-self.ye)/self.yscale, (self.y+self.ye)/self.yscale)
 
     @property
     def xscale(self):
@@ -2481,7 +2572,7 @@ def images_from_clipboard(df=None, x='time', params=[], image_func=Image, lab='b
 
     # Fix the list of parameters
     required_params = ['name','time','image','A','B','S','download']
-    if (x not in params) and (x != 'time'): params = params + x
+    if (x not in params) and (x != 'time'): params = params + [x]
     if 'unixtime' in params: params.remove('unixtime')
 
     # Prepare DataFrame for inserting new data
@@ -2499,6 +2590,7 @@ def images_from_clipboard(df=None, x='time', params=[], image_func=Image, lab='b
     df = df.sort_index()
 
     # Get the parameters
+    bec1db = bec1db_package.Tullia(delta=15)
     try: bec1db.refresh()
     except: pass
     df_params = bec1db.image_query(df.index.tolist(), params + ['unixtime'])
@@ -2516,8 +2608,8 @@ def images_from_clipboard(df=None, x='time', params=[], image_func=Image, lab='b
     # Add Images
     download = list(download)
     df.download = (df.A & ('A' in download)) | (df.B & ('B' in download)) | (df.S & ('S' in download))
-    for n in tqdm(df.index.values):
-        if df.loc[n,'download'] and (type(df.loc[n,'image']) != image_func): df.loc[n, 'image'] = image_func(n, lab)
+    for n in tqdm(df.index.values, desc='Downloading Images', leave=display):
+        if df.loc[n,'download'] and (type(df.loc[n,'image']) != image_func): df.loc[n, 'image'] = image_func(n)
 
     # Remove entries that are not in download
     if not keep_all:
@@ -2539,6 +2631,51 @@ def images_from_clipboard(df=None, x='time', params=[], image_func=Image, lab='b
         IPython.display.display(df.head(3))
 
     return df
+
+'''
+bin data
+========
+'''
+class bin_data:
+    '''
+    Binning data with same x values
+    ===============================
+
+    Properties : self.xxxx
+        xi, yi
+        x : unique values of xi in increasing order
+        y : mean value at x
+        ynum : number of points at x
+        ybin : list of points at x
+        ystd : np.std at x
+        yerr : ystd/sqrt(ynum), standard error of the mean
+        data : (x, y)
+        std : (x, y, ystd)
+        err : (x, y, yerr)
+        all : (xi, yi)
+    '''
+    def __init__(self, xi, yi, ):
+        x = np.unique(xi)
+        ybin = [yi[xi == x_i] for x_i in x]
+        ynum = np.array([len(y_i) for y_i in ybin])
+        y = np.array([np.mean(y_i) for y_i in ybin])
+        ystd = np.array([np.std(y_i) for y_i in ybin])
+        yerr = ystd / np.sqrt(ynum)
+
+        # Store
+        self.xi = xi
+        self.yi = yi
+        self.x = x
+        self.y = y
+        self.ybin = ybin
+        self.ynum = ynum
+        self.ystd = ystd
+        self.yerr = yerr
+        self.data = (x, y)
+        self.std = (x, y, ystd)
+        self.err = (x, y, yerr)
+        self.all = (xi, yi)
+
 
 ################################################################################
 ################################################################################
@@ -2731,33 +2868,31 @@ def binbyx(*args, **kwargs):
     sectsdef = [x_min,x_max]
     # Load inputs
     bins = kwargs.get('bins',binsdef)
-    if type(bins) is tuple: bins = list(bins)
+    # if type(bins) is tuple: bins = list(bins)
     step = kwargs.get('step',None)
-    if step == None: step = kwargs.get('steps',stepdef)
-    if type(step) is tuple: step = list(step)
+    if step is None: step = kwargs.get('steps',stepdef)
     blank = kwargs.get('blank',None)
-    if blank == None: blank = kwargs.get('blanks',blankdef)
+    if blank is None: blank = kwargs.get('blanks',blankdef)
     sects = kwargs.get('sects',None)
-    if sects == None: sects = kwargs.get('edges',None)
-    if sects == None: sects = kwargs.get('edge',None)
-    if sects == None: sects = kwargs.get('breaks',None)
-    if sects == None: sects = kwargs.get('sect',sectsdef)
-    if type(sects) is tuple: sects = list(sects)
+    if sects is None: sects = kwargs.get('edges',None)
+    if sects is None: sects = kwargs.get('edge',None)
+    if sects is None: sects = kwargs.get('breaks',None)
+    if sects is None: sects = kwargs.get('sect',sectsdef)
     func = kwargs.get('func',np.mean)
-    # Make it a list if it is not already
-    if type(bins) != list: bins = [bins]
-    if type(sects) != list: sects = [sects]
-    if type(step) != list: step = [step]
+    # Make it an array if it is not already
+    if np.isscalar(bins): bins = np.array([bins])
+    if np.isscalar(sects): sects = np.array([sects])
+    if np.isscalar(step): step = np.array([step])
     # Pad sects with x_min, x_max if not provided
     if len(sects) == max(len(bins),len(step))-1: sects = [x_min,*sects,x_max]
     if len(sects) != max(len(bins),len(step))+1: print('Input Error: Place discription here!')
     # Prepare outputs
     binsarray = np.array([])
     # Compute bins array
-    if bins[0] != None: # bins are provided
+    if bins[0] is not None: # bins are provided
         for i,ibins in enumerate(bins):
             binsarray = np.append( binsarray, np.linspace(sects[i],sects[i+1],bins[i]+1)[0:-1] )
-    elif step[0] != None: # steps are provided
+    elif step[0] is not None: # steps are provided
         for i,istep in enumerate(step):
             binsarray = np.append( binsarray, np.arange(sects[i],sects[i+1],step[i]) )
     else: # nothing was provided, default case
@@ -2868,16 +3003,16 @@ def surface_fit(*args, **kwargs):
     show = kwargs.get('show',False)
     if fun is None or guess is None: raise TypeError("surface_fit: Must provide kwargs fun and guess")
     # Get x,y,z,using from inputs
-    if len(args) is 0:
+    if len(args) == 0:
         return None
     elif len(args) <= 2:
         z = args[0]
-        using = np.ones_like(z, dtype=np.bool) if len(args) is 1 else args[1].astype(np.bool)
+        using = np.ones_like(z, dtype=np.bool) if len(args) == 1 else args[1].astype(np.bool)
         x, y = np.meshgrid(np.arange(z.shape[1]), np.arange(z.shape[0]))
     elif len(args) <= 4:
         x, y, z = args[0:3]
-        using = np.ones_like(z, dtype=np.bool) if len(args) is 3 else args[3].astype(np.bool)
-        if len(x.shape) is 1: x, y = np.meshgrid(x, y)
+        using = np.ones_like(z, dtype=np.bool) if len(args) == 3 else args[3].astype(np.bool)
+        if len(x.shape) == 1: x, y = np.meshgrid(x, y)
     else:
         raise ValueError
 
@@ -2913,14 +3048,19 @@ class curve_fit:
     Inputs Required :
         fitfun - python function with inputs (of type x_data, p0, p1, p2, p3, ...) and returns np.array y_data
         guess  - could be a simple list, or more detailed dict (see below for more info)
-        x_data - I think this could be anything supported by fitfun input, to be safe, keep it np.array
+        x_data - This could be anything supported by fitfun input, to be safe, keep it np.array
         y_data - must be np.array
 
     Inputs Optional :
         y_err - sigma for the y_data, defaults to np.ones_like(y_data). The following is optimized sum ( (y_data-fitfun(...))/y_err )^2
         fixed - dict(gradient = 0, tau = 5, ...) : parameters to fix. NOTE: if guess contains the same key, that key will not be fixed
+        fitting_method - None, 'lm', 'trf', 'dogbox' : force a particular fitting method
+        loss_function - 'linear','soft_l1','huber','cauchy','arctan' : Robust fitting, function used to calculate the quantity to minize by least square algorythm
+        noise_level - double : Robust fitting, typical noise level for the data residual, values >> than this are considred outliers
+        NOTE: For reason I don't understand, robust fitting requires some y_err
         plot  - True / False : Plots a standard figure with data, fit line, residuals
         info  - True / False : print(self.fr)
+        disp  - True / False : print(self.fr), info or disp are identical
 
     guess :
         1) guess = [12, 3, -np.pi, ...] : a simple list
@@ -2939,7 +3079,7 @@ class curve_fit:
         fe : indexable sdict of fit errors with parameters as keys, including the fixed and default parameters
         ul : indexable sdict of upper limit of fit values with parameters as keys, including the fixed and default parameters
         ll : indexable sdict of lower limit of fit values with parameters as keys, including the fixed and default parameters
-        xp : finely spaced grid for same x range : np.linspace(self.x.min(), self.x.max(), 1000)
+        xp : finely spaced grid for same x range : np.linspace(self.x.min(), self.x.max(), 1000), if fitfun allows
         ye : short form for y_err
 
     Special Methods :
@@ -2952,6 +3092,7 @@ class curve_fit:
 
     Methods : self.xxx(aa=yy, bb=yy, ..)
         yband(x = None, using=[]) :
+        bootstrap(runs=1000, plot=True, **kwargs)
         plot()
             two plots, data and fit curve on top, and residuals below. Optional inputs
             ax : to plot somewhere specific
@@ -2963,10 +3104,27 @@ class curve_fit:
         plot_residuals_hist(ax=None, orientation='vertical) : histogram of the residuals
         plot_fiterrors(ax=None, x=None, using=[]) : fit error band, optinally include only keys in using
     '''
-    def __init__(self, fitfun, guess, x_data, y_data, y_err=None, fixed=dict(), plot=False, info=False):
+    def __init__(self, fitfun, guess, x_data, y_data, y_err=None, fixed=dict(),
+                 fitting_method=None, loss_function='linear', noise_level=None,
+                 plot=False, info=False, disp=False):
         ''' init will fit the data and save fitresults '''
         ### Verify inputs
         if not callable(fitfun): print("provided fitfun is not valid python function!")
+        # If y_err is not provided, set it to some small number, smaller than the smallers of y
+        if type(y_err) == type(None): y_err = np.ones_like(x_data)*np.mean(np.abs(y_data))/1000
+        # Make sure noise_level is provided if loss_function is not 'linear'
+        if loss_function not in ['linear','soft_l1','huber','cauchy','arctan']:
+            print("provided loss_function isn't one of 5 options!")
+        if loss_function != 'linear' and type(noise_level) == type(None):
+            print("Must provid noise_level for the selected loss_function")
+            noise_level = 1.0 # default value because its not porvided
+        if loss_function == 'linear': robust_settings = dict() # robust fitting is not chosen
+        else:
+            robust_settings = dict(loss=loss_function, f_scale=noise_level)
+            if type(fitting_method) == type(None): fitting_method = 'trf' # default for robust fitting
+
+        # Additional inputs (not inputs now, but depending on use case, they could be added as inputs)
+        #
 
         ### Process single item from guess -- return guess value, bounds, units
         def temp_process_guess_item(item):
@@ -2996,7 +3154,11 @@ class curve_fit:
         guess_values, guess_bounds, guess_units = np.array([i[0] for i in temp_]), np.array([i[1] for i in temp_]).T, [i[2] for i in temp_]
 
         ### Extract all fixed items, including provided and default ones
-        fixed_func_defaults = {k:v for k, v in zip(fitfun.__code__.co_varnames[-len(fitfun.__defaults__):fitfun.__code__.co_argcount], fitfun.__defaults__)}
+        total_inputs = fitfun.__code__.co_argcount
+        total_inputs_w_default = len(fitfun.__defaults__) if fitfun.__defaults__ else 0
+        fixed_keys = fitfun.__code__.co_varnames[total_inputs-total_inputs_w_default:total_inputs]
+        fixed_vals = fitfun.__defaults__ if fitfun.__defaults__ else []
+        fixed_func_defaults = {k:v for (k,v) in zip(fixed_keys, fixed_vals)}
         fixed_dict = {**fixed_func_defaults, **fixed}
         for k in guess_keys: fixed_dict.pop(k, None)
 
@@ -3007,7 +3169,9 @@ class curve_fit:
         ### Fit Data
         success = False
         try:
-            fv_, fe_ = scipy.optimize.curve_fit(fitfun_args, x_data, y_data, guess_values, sigma=y_err, bounds=guess_bounds)
+            fv_, fe_ = scipy.optimize.curve_fit(fitfun_args, x_data, y_data, guess_values,
+                                                sigma=y_err, bounds=guess_bounds, method=fitting_method,
+                                                **robust_settings)
             fe_ = np.sqrt(np.diag(fe_))
             success = True
         except (ValueError, RuntimeError) as err:
@@ -3028,10 +3192,18 @@ class curve_fit:
         self.x = x_data
         self.y = y_data
         self.y_err = y_err
+        self.internal_fitfun = fitfun_args
+        self.internal_guess = guess_values
+        self.internal_sigma = y_err
+        self.internal_bounds = guess_bounds
+        self.internal_fv = fv_
+        self.internal_keys = guess_keys
+        self.internal_robust_settings = robust_settings
+        self.internal_fitting_method = fitting_method
 
         ### Plots and display
         if plot: self.plot()
-        if info: print(self)
+        if info or disp: print(self)
 
     @property
     def fv(self): return sdict(zip(self.fr.index.values, self.fr['FitValue'].values))
@@ -3042,7 +3214,13 @@ class curve_fit:
     @property
     def ll(self): return sdict(zip(self.fr.index.values, self.fr['FitValue'].values - self.fr['FitError'].values))
     @property
-    def xp(self): return np.linspace(self.x.min(), self.x.max(), 1000)
+    def xp(self):
+        xp = np.linspace(self.x.min(), self.x.max(), 1000)
+        # If the function always returns a fixed length output independent of the x input
+        if len(self.y) == len(self(xp)): xp = self.x
+        return xp
+    @property
+    def yp(self): return self(self.xp)
     @property
     def ye(self): return self.y_err
 
@@ -3065,7 +3243,7 @@ class curve_fit:
 
     def yband(self, x=None, using=[]):
         '''Return (y_min, y_max) at x including using list of fit errors'''
-        if x is None: x = self.x
+        if type(x) is type(None): x = self.x
         if type(using) == str: using = [using,]
         if len(using) == 0: using = self.fr.index.values
         ys = [self(x)]
@@ -3073,40 +3251,142 @@ class curve_fit:
             ys.append(self(x, **{k : self.fv[k] - self.fe[k]}))
             ys.append(self(x, **{k : self.fv[k] + self.fe[k]}))
         return (np.min(ys, axis=0), np.max(ys, axis=0))
-    def plot_fitdata(self, ax=None, x=None):
+    def plot_fitdata(self, ax=None, x=None, fmtData='r.-', fmtFit='k-'):
         '''Plot data and the fitline on ax (or new figure) with x (or self.xp) for fitline'''
-        if x is None: x = self.xp
-        if ax is None: fig, ax = plt.subplots()
-        ax.errorbar(self.x, self.y, self.y_err, fmt='r.-')
-        ax.plot(x, self(x), 'k')
+        if type(x) is type(None): x = self.xp
+        if type(ax) is type(None): fig, ax = plt.subplots()
+        sorti = np.argsort(self.x)
+        ax.plot(x, self(x), fmtFit)
+        ax.errorbar(self.x[sorti], self.y[sorti], self.y_err[sorti], fmt=fmtData)
         return ax
     def plot_residuals(self, ax=None):
         '''Plot residual with vertical lines and zero line on ax (or new figure)'''
-        if ax is None: fig, ax = plt.subplots()
+        if type(ax) is type(None): fig, ax = plt.subplots()
         ax.axhline(0, c='k', alpha=0.5)
         ax.vlines(self.x, self.x*0, self.y-self())
-        ax.plot(self.x, self.y-self(), 'r.')
+        sorti = np.argsort(self.x)
+        ax.plot(self.x[sorti], self.y[sorti]-self()[sorti], 'r.')
         return ax
     def plot_residuals_hist(self, ax=None, orientation='vertical'):
         '''Plot histogram of the residul on ax (or new figure) with orientation either vertical or horizontal'''
-        if ax is None: fig, ax = plt.subplots()
+        if type(ax) is type(None): fig, ax = plt.subplots()
         ax.hist(self.y-self(), orientation=orientation)
         return ax
-    def plot_fiterrors(self, ax=None, x=None, using=[]):
+    def plot_fiterrors(self, ax=None, x=None, using=[], fmtData='r.-', fmtFit='k-'):
         '''Plot a band of y representing fit errors : on ax (or a new figure) with x (or self.ax) and with using list (or all) of fit variables'''
-        if x is None: x = self.xp
-        ax = self.plot_fitdata(ax)
+        if type(x) is type(None): x = self.xp
+        ax = self.plot_fitdata(ax, x, fmtData, fmtFit)
         ax.fill_between(x, *self.yband(x=x, using=using), color='g', alpha=0.25)
         return ax
-    def plot(self, ax=None, x=None, fiterrors=True, using=[], divider=0.25):
+    def plot(self, ax=None, x=None, fiterrors=True, using=[], divider=0.25, fmtData='r.-', fmtFit='k-'):
         '''Plot data with fitline and '''
-        if ax is None: ax = plt.subplots(figsize=[5,5])[1]
-        if x is None: x = self.xp
+        if type(ax) is type(None): ax = plt.subplots(figsize=[5,5])[1]
+        if type(x) is type(None): x = self.xp
         (ax1, ax2) = divide_axes(ax, divider=divider, direction='vertical', shared=True)
-        if fiterrors: self.plot_fiterrors(ax=ax1, x=x, using=using)
-        else: self.plot_fitdata(ax=ax1, x=x)
+        if fiterrors: self.plot_fiterrors(ax=ax1, x=x, using=using, fmtData=fmtData, fmtFit=fmtFit)
+        else: self.plot_fitdata(ax=ax1, x=x, fmtData=fmtData, fmtFit=fmtFit)
         self.plot_residuals(ax2)
         return (ax1, ax2)
+    def bootstrap(self, runs=1000, plot=False, info=False, disp=False):
+        # Fit runs many times
+        fvs = []
+        failed_count = 0
+        for i in tqdm(range(runs), desc='Bootstrapping', leave=plot):
+            usei = np.arange(self.x.size)
+            usei = np.random.choice(usei, usei.size)
+            try:
+                fv_ = scipy.optimize.curve_fit(self.internal_fitfun, self.x[usei], self.y[usei],
+                        self.internal_fv, sigma=self.internal_sigma, bounds=self.internal_bounds,
+                        method=self.internal_fitting_method, **self.internal_robust_settings)[0]
+                fvs.append(fv_)
+            except (ValueError, RuntimeError) as err:
+                failed_count += 1
+        fvs = np.array(fvs)
+        if failed_count > 0: print("Fit failed {} times.".format(failed_count))
+        # Extract useful information
+        bs_raw = pd.DataFrame(fvs)
+        percentiles = np.array([0.5-0.9545/2, 0.5-0.6827/2, 0.5+0.6827/2, 0.5+0.9545/2]) # Confidence intervals at -2,-1,1,2 sigma
+        bs_percentiles = bs_raw.quantile(q=percentiles)
+        bsresults_dict = dict(mean=bs_raw.mean().values, std=bs_raw.std().values)
+        bsresults_df = pd.DataFrame(bsresults_dict, index=self.internal_keys, columns=['mean','std'])
+        bsresults_df['std%'] = bsresults_df['std'] / np.abs(bsresults_df['mean']) * 100
+        bsresults_df['std%'][bsresults_df['std%'] > 999] = 999
+        bsresults_df['-2 sigma'] = bs_percentiles.iloc[0,:].values
+        bsresults_df['-1 sigma'] = bs_percentiles.iloc[1,:].values
+        bsresults_df['+1 sigma'] = bs_percentiles.iloc[2,:].values
+        bsresults_df['+2 sigma'] = bs_percentiles.iloc[3,:].values
+
+        # Store results
+        self.bs_all = bs_raw
+        self.bs = bsresults_df
+        # Plot
+        if info or disp: print(self.bs)
+        if plot: return self.plot_bootstrap()
+    def plot_bootstrap(self, bins=50, color='gray', alpha=1, figsize=None,
+                   grid=True, ax=None, density=True):
+        ax = self.bs_all.hist(grid=grid, ax=ax, figsize=figsize, color=color,
+                              alpha=alpha, bins=bins, density=density).flatten()
+        for i in range(len(self.bs)):
+            ax[i].axvline(self.bs['mean'].iloc[i], color='k', zorder=0, alpha=1)
+            ax[i].axvspan(self.bs['-1 sigma'].iloc[i], self.bs['+1 sigma'].iloc[i], color='g', zorder=-1, alpha=0.25)
+            ax[i].axvspan(self.bs['-2 sigma'].iloc[i], self.bs['-1 sigma'].iloc[i], color='b', zorder=-2, alpha=0.25)
+            ax[i].axvspan(self.bs['+1 sigma'].iloc[i], self.bs['+2 sigma'].iloc[i], color='b', zorder=-2, alpha=0.25)
+            xlim = list(ax[i].get_xlim())
+            if xlim[0] < self.bs['mean'].iloc[i] - 4*self.bs['std'].iloc[i]:
+                xlim[0] = self.bs['mean'].iloc[i] - 4*self.bs['std'].iloc[i]
+                ax[i].axvspan(self.bs['mean'].iloc[i] - 4*self.bs['std'].iloc[i],
+                              self.bs['mean'].iloc[i] - 3.8*self.bs['std'].iloc[i], color='r', zorder=-2, alpha=0.5)
+            if xlim[1] > self.bs['mean'].iloc[i] + 4*self.bs['std'].iloc[i]:
+                xlim[1] = self.bs['mean'].iloc[i] + 4*self.bs['std'].iloc[i]
+                ax[i].axvspan(self.bs['mean'].iloc[i] + 3.8*self.bs['std'].iloc[i],
+                              self.bs['mean'].iloc[i] + 4*self.bs['std'].iloc[i], color='r', zorder=-2, alpha=0.5)
+            ax[i].set(title=r'{} : 1$\sigma$={:.0f}%'.format(self.bs.index.values[i], self.bs['std%'].iloc[i]))
+            ax[i].set(xlim=xlim)
+        plt.tight_layout()
+        return ax
+
+'''
+Fitting routine for box_bec1
+============================
+'''
+class BoxFit(curve_fit):
+    def __init__(self, nz, guess=None, **kwargs):
+        if guess is None:
+            s0, L0, n0 = 3e-6, 92e-6, np.nanmean(nz.trim(xlim=[-10e-6, 10e-6]).y)
+            guess = [-L0/2, L0/2, s0, s0, n0,
+                     -0.1*n0/L0, -0.1*n0/L0**2, -0.1*n0/L0**3,
+                     -0.01*n0, -0.01*n0/L0]
+        super(BoxFit, self).__init__(fitfun=box_bec1, guess=guess,
+            x_data=nz.x, y_data=nz.y, **kwargs)
+        self.nz_original = nz
+        self.guess = guess
+
+    @property
+    def nz(self):
+        # Subtracting off the offset and gradient
+        return self.nz_original.copy(y = self.nz_original.y - self(n0=0, a1=0, a2=0, a3=0))
+
+    @property
+    def nz_centered(self):
+        # Subtracting off the offset and gradient, and centering the z
+        return self.nz_original.copy(
+            x = self.nz_original.x - self.z0[0],
+            y = self.nz_original.y - self(n0=0, a1=0, a2=0, a3=0)
+        )
+
+    @property
+    def L(self):
+        L = self.fv['x2'] - self.fv['x1']
+        Le = np.sqrt(self.fe['x2']**2 + self.fe['x1']**2)
+        Lep = Le/L*100
+        return np.array([L, Le, Lep])
+
+    @property
+    def z0(self):
+        z0 = (self.fv['x1'] + self.fv['x2']) / 2
+        z0e = np.sqrt(self.fe['x1']**2 + self.fe['x2']**2) / 2
+        z0ep = z0e / z0
+        return np.array([z0, z0e, z0ep])
 
 '''
 Area of Partial ellipse
@@ -3962,6 +4242,10 @@ cst_.ldB_prefactor = ((cst_.twopi * cst_.hbar**2)/(cst_.mass))**(1/2)
 cst_.xi = 0.37
 cst_.virial_coef = [1, 3*2**(1/2)/8, -0.29095295, 0.065]
 cst_.ideal_gas_density_prefactor = 1/(6*np.pi**2) * (2*cst_.mass/cst_.hbar**2)**(3/2)
+twopi = 2 * np.pi
+pi = np.pi
+kHz = 1e3 * cst_.h
+
 
 '''
 Warnings for Users

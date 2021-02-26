@@ -1,0 +1,216 @@
+(* Content-type: application/vnd.wolfram.mathematica *)
+
+(*** Wolfram Notebook File ***)
+(* http://www.wolfram.com/nb *)
+
+(* CreatedBy='Mathematica 11.1' *)
+
+(*CacheID: 234*)
+(* Internal cache information:
+NotebookFileLineBreakTest
+NotebookFileLineBreakTest
+NotebookDataPosition[       158,          7]
+NotebookDataLength[      6849,        208]
+NotebookOptionsPosition[      5834,        175]
+NotebookOutlinePosition[      6190,        191]
+CellTagsIndexPosition[      6147,        188]
+WindowFrame->Normal*)
+
+(* Beginning of Notebook Content *)
+Notebook[{
+
+Cell[CellGroupData[{
+Cell["Lorentzian Function Definition", "Section",
+ CellChangeTimes->{{3.752771048915532*^9, 
+  3.752771055670621*^9}},ExpressionUUID->"601cf6bf-6d02-45a2-b94e-\
+face38bf6c2f"],
+
+Cell["\<\
+amp * ((gamma/2)**2) / ((x-x0)**2 + (gamma/2)**2) + offset + gradient * x\
+\>", "Text",
+ CellChangeTimes->{
+  3.752771058195012*^9},ExpressionUUID->"07bbe491-65b0-4362-b0b1-\
+e7c0c440463e"],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"A", 
+   FractionBox[
+    SuperscriptBox[
+     RowBox[{"(", 
+      FractionBox["\[CapitalGamma]", "2"], ")"}], "2"], 
+    RowBox[{
+     SuperscriptBox[
+      RowBox[{"(", 
+       RowBox[{"x", "-", 
+        SubscriptBox["x", "0"]}], ")"}], "2"], "+", 
+     SuperscriptBox[
+      RowBox[{"(", 
+       FractionBox["\[CapitalGamma]", "2"], ")"}], "2"]}]]}], ";"}]], "Input",\
+
+ CellChangeTimes->{
+  3.7527711792700977`*^9},ExpressionUUID->"cd6f935c-4af6-4aea-a98f-\
+23b7bbf2511c"],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"Simplify", "[", 
+  RowBox[{
+   RowBox[{"Integrate", "[", 
+    RowBox[{
+     RowBox[{"A", 
+      FractionBox[
+       SuperscriptBox[
+        RowBox[{"(", 
+         FractionBox["\[CapitalGamma]", "2"], ")"}], "2"], 
+       RowBox[{
+        SuperscriptBox[
+         RowBox[{"(", "x", ")"}], "2"], "+", 
+        SuperscriptBox[
+         RowBox[{"(", 
+          FractionBox["\[CapitalGamma]", "2"], ")"}], "2"]}]]}], ",", 
+     RowBox[{"{", 
+      RowBox[{"x", ",", 
+       RowBox[{"-", "\[Infinity]"}], ",", " ", "\[Infinity]"}], "}"}]}], 
+    "]"}], ",", 
+   RowBox[{"Assumptions", "\[Rule]", 
+    RowBox[{"{", 
+     RowBox[{"\[CapitalGamma]", ">", "0"}], "}"}]}]}], "]"}]], "Input",
+ CellChangeTimes->{{3.752771063046029*^9, 
+  3.752771207910782*^9}},ExpressionUUID->"14b04b44-827e-40c8-8f4d-\
+036e57ccfb5a"],
+
+Cell[BoxData[
+ FractionBox[
+  RowBox[{"A", " ", "\[Pi]", " ", "\[CapitalGamma]"}], "2"]], "Output",
+ CellChangeTimes->{{3.752771195128306*^9, 
+  3.752771208581053*^9}},ExpressionUUID->"3b961c81-9527-45d9-a9f0-\
+f7028e08078d"]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"Manipulate", "[", 
+  RowBox[{
+   RowBox[{"Plot", "[", 
+    RowBox[{
+     RowBox[{"A", 
+      FractionBox[
+       SuperscriptBox[
+        RowBox[{"(", 
+         FractionBox["\[CapitalGamma]", "2"], ")"}], "2"], 
+       RowBox[{
+        SuperscriptBox[
+         RowBox[{"(", "x", ")"}], "2"], "+", 
+        SuperscriptBox[
+         RowBox[{"(", 
+          FractionBox["\[CapitalGamma]", "2"], ")"}], "2"]}]]}], ",", 
+     RowBox[{"{", 
+      RowBox[{"x", ",", 
+       RowBox[{"-", "10"}], ",", " ", "10"}], "}"}], ",", 
+     RowBox[{"PlotRange", "\[Rule]", 
+      RowBox[{"{", 
+       RowBox[{"0", ",", "2"}], "}"}]}]}], "]"}], ",", 
+   RowBox[{"{", 
+    RowBox[{
+     RowBox[{"{", 
+      RowBox[{"A", ",", "1"}], "}"}], ",", "0", ",", "2"}], "}"}], ",", 
+   RowBox[{"{", 
+    RowBox[{
+     RowBox[{"{", 
+      RowBox[{"\[CapitalGamma]", ",", "1"}], "}"}], ",", "0", ",", "10"}], 
+    "}"}]}], "]"}]], "Input",
+ CellChangeTimes->{{3.752771227216715*^9, 
+  3.752771343979045*^9}},ExpressionUUID->"a399d52d-6086-4a1a-87e7-\
+5b1dc82ae92c"],
+
+Cell[BoxData[
+ TagBox[
+  StyleBox[
+   DynamicModuleBox[{$CellContext`A$$ = 2, $CellContext`\[CapitalGamma]$$ = 
+    10, Typeset`show$$ = True, Typeset`bookmarkList$$ = {}, 
+    Typeset`bookmarkMode$$ = "Menu", Typeset`animator$$, Typeset`animvar$$ = 
+    1, Typeset`name$$ = "\"untitled\"", Typeset`specs$$ = {{{
+       Hold[$CellContext`A$$], 1}, 0, 2}, {{
+       Hold[$CellContext`\[CapitalGamma]$$], 1}, 0, 10}}, Typeset`size$$ = {
+    360., {120., 124.}}, Typeset`update$$ = 0, Typeset`initDone$$, 
+    Typeset`skipInitDone$$ = True, $CellContext`A$18572$$ = 
+    0, $CellContext`\[CapitalGamma]$18573$$ = 0}, 
+    DynamicBox[Manipulate`ManipulateBoxes[
+     1, StandardForm, 
+      "Variables" :> {$CellContext`A$$ = 1, $CellContext`\[CapitalGamma]$$ = 
+        1}, "ControllerVariables" :> {
+        Hold[$CellContext`A$$, $CellContext`A$18572$$, 0], 
+        Hold[$CellContext`\[CapitalGamma]$$, \
+$CellContext`\[CapitalGamma]$18573$$, 0]}, 
+      "OtherVariables" :> {
+       Typeset`show$$, Typeset`bookmarkList$$, Typeset`bookmarkMode$$, 
+        Typeset`animator$$, Typeset`animvar$$, Typeset`name$$, 
+        Typeset`specs$$, Typeset`size$$, Typeset`update$$, Typeset`initDone$$,
+         Typeset`skipInitDone$$}, "Body" :> 
+      Plot[$CellContext`A$$ (($CellContext`\[CapitalGamma]$$/
+           2)^2/($CellContext`x^2 + ($CellContext`\[CapitalGamma]$$/
+           2)^2)), {$CellContext`x, -10, 10}, PlotRange -> {0, 2}], 
+      "Specifications" :> {{{$CellContext`A$$, 1}, 0, 
+         2}, {{$CellContext`\[CapitalGamma]$$, 1}, 0, 10}}, "Options" :> {}, 
+      "DefaultOptions" :> {}],
+     ImageSizeCache->{405., {206., 212.}},
+     SingleEvaluation->True],
+    Deinitialization:>None,
+    DynamicModuleValues:>{},
+    SynchronousInitialization->True,
+    UndoTrackedVariables:>{Typeset`show$$, Typeset`bookmarkMode$$},
+    UnsavedVariables:>{Typeset`initDone$$},
+    UntrackedVariables:>{Typeset`size$$}], "Manipulate",
+   Deployed->True,
+   StripOnInput->False],
+  Manipulate`InterpretManipulate[1]]], "Output",
+ CellChangeTimes->{{3.752771283946403*^9, 
+  3.752771344255322*^9}},ExpressionUUID->"d58c692e-b77c-42bf-b163-\
+13aff238031c"]
+}, Open  ]]
+}, Open  ]]
+},
+WindowSize->{808, 905},
+WindowMargins->{{167, Automatic}, {38, Automatic}},
+FrontEndVersion->"11.1 for Mac OS X x86 (32-bit, 64-bit Kernel) (April 27, \
+2017)",
+StyleDefinitions->"Default.nb"
+]
+(* End of Notebook Content *)
+
+(* Internal cache information *)
+(*CellTagsOutline
+CellTagsIndex->{}
+*)
+(*CellTagsIndex
+CellTagsIndex->{}
+*)
+(*NotebookFileOutline
+Notebook[{
+Cell[CellGroupData[{
+Cell[580, 22, 175, 3, 64, "Section", "ExpressionUUID" -> \
+"601cf6bf-6d02-45a2-b94e-face38bf6c2f"],
+Cell[758, 27, 199, 5, 30, "Text", "ExpressionUUID" -> \
+"07bbe491-65b0-4362-b0b1-e7c0c440463e"],
+Cell[960, 34, 510, 18, 67, "Input", "ExpressionUUID" -> \
+"cd6f935c-4af6-4aea-a98f-23b7bbf2511c"],
+Cell[CellGroupData[{
+Cell[1495, 56, 830, 25, 67, "Input", "ExpressionUUID" -> \
+"14b04b44-827e-40c8-8f4d-036e57ccfb5a"],
+Cell[2328, 83, 225, 5, 82, "Output", "ExpressionUUID" -> \
+"3b961c81-9527-45d9-a9f0-f7028e08078d"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[2590, 93, 1058, 33, 98, "Input", "ExpressionUUID" -> \
+"a399d52d-6086-4a1a-87e7-5b1dc82ae92c"],
+Cell[3651, 128, 2155, 43, 435, "Output", "ExpressionUUID" -> \
+"d58c692e-b77c-42bf-b163-13aff238031c"]
+}, Open  ]]
+}, Open  ]]
+}
+]
+*)
+

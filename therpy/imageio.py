@@ -6,6 +6,7 @@ import os
 import datetime
 from datetime import timedelta
 import re
+# import pyfits
 import astropy.io.fits as pyfits
 import matplotlib.pyplot as pp
 from shutil import copyfile
@@ -41,12 +42,15 @@ def imagename2alldata(imagename):
 def backuploc(lab='bec1'):
     # Get user home directory
     basepath = os.path.expanduser('~')
+    # override the basepath if you are using external drive with your laptop
+    # basepath = '/Volumes/Brain'
     # Find out the os
     from sys import platform as _platform
     # Platform dependent storage
     if _platform == 'darwin':
         # Mac OS X
-        backuppath = os.path.join(basepath, 'Documents', 'My Programs', 'Raw Imagedata Temporary',lab)
+        backuppath = os.path.join(basepath, 'Documents', 'My Programs', 'Raw Imagedata Temporary')
+        # backuppath = os.path.join(basepath, 'Documents Local', 'My Programs', 'Raw Imagedata Temporary')
     elif _platform == 'win32' or _platform == 'cygwin':
         # Windows
         backuppath = os.path.join(basepath, 'Documents', 'My Programs', 'Raw Imagedata Temporary',lab)
@@ -191,20 +195,21 @@ def imagename2imagepath(imagename, lab='bec1', redownload=False):
         # Unknown platform
         basepath = None
     # Check if server is connected
-    if os.path.exists(basepath):
-        # Find the fullpath to the image
+    if os.path.exists(basepath) is False:
+        raise FileNotFoundError('Server NOT connected at {}! and file was not found at {}'.format(basepath, imagepath_backup))
+    # Find the fullpath to the image
+    imagepath = os.path.join(basepath, subpath, imagename)
+    # Check if file exists
+    if os.path.exists(imagepath) is False:
+        imagepath_today = imagepath
+        subpath = imagename2subfolder_yesterday(imagename)
         imagepath = os.path.join(basepath, subpath, imagename)
-        # Check if file exists
         if os.path.exists(imagepath) is False:
-            imagepath_today = imagepath
-            subpath = imagename2subfolder_yesterday(imagename)
-            imagepath = os.path.join(basepath, subpath, imagename)
-            if os.path.exists(imagepath) is False:
-                raise FileNotFoundError(
-                    'Image NOT present on the server: Possibly invalid filename or folder location? Not found at : {} and {}'.format(
-                        imagepath_today, imagepath))
-        # Copy file to backup location
-        backupimage(imagepath, imagepath_backup)
+            raise FileNotFoundError(
+                'Image NOT present on the server: Possibly invalid filename or folder location? Not found at : {} and {}'.format(
+                    imagepath_today, imagepath))
+    # Copy file to backup location
+    backupimage(imagepath, imagepath_backup)
     # Return the backup path
     return imagepath_backup
 
