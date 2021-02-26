@@ -41,8 +41,8 @@ import IPython.display
 import tqdm.notebook
 tqdm = tqdm.notebook.tqdm
 
-import bec1db as bec1db_package
-# from . import dbreader as bec1db_package # for BEC1
+# import bec1db as bec1db_package
+from . import dbreader as bec1db_package # for BEC1
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
