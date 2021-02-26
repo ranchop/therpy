@@ -41,8 +41,8 @@ import IPython.display
 import tqdm.notebook
 tqdm = tqdm.notebook.tqdm
 
-from . import dbreader
-bec1db = dbreader.Tullia(delta=15)
+import bec1db as bec1db_package
+# from . import dbreader as bec1db_package # for BEC1
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -2577,6 +2577,7 @@ def images_from_clipboard(df=None, x='time', params=[], image_func=Image, downlo
     df = df.sort_index()
 
     # Get the parameters
+    bec1db = bec1db_package.Tullia(delta=15)
     try: bec1db.refresh()
     except: pass
     df_params = bec1db.image_query(df.index.tolist(), params + ['unixtime'])

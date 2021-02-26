@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name='therpy',
-    version='0.3.4',
+    version='0.4',
     packages=['therpy',],
 
     # Package requirements
