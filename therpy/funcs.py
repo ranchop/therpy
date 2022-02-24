@@ -41,7 +41,7 @@ import IPython.display
 import tqdm.notebook
 tqdm = tqdm.notebook.tqdm
 
-import bec1db as bec1db_package
+# import bec1db as bec1db_package
 # from . import dbreader as bec1db_package # for BEC1
 
 import matplotlib.pyplot as plt
@@ -3030,7 +3030,7 @@ def surface_fit(*args, **kwargs):
     # Show
     if show:
         fig,ax = plt.subplots(nrows=1,ncols=1)
-        ax.imshow(z,cmap='gray', origin=0)
+        ax.imshow(z,cmap='gray', origin='lower')
         ax.contour(res['zfit'], cmap='jet')
         res['fig'] = fig
 
@@ -4177,74 +4177,74 @@ class hybridEoS_avg:
 ################################################################################
 # C0 : Housekeeping
 ################################################################################
-'''
-Download LookupTable Data, and precompile it for interp_od
-'''
-p_ = getpath('Projects','Data','LookupTable','Lookup_Table_Fast_PreCompData_V2.p')
-if not os.path.isfile(p_):
-    print("Downloading Lookup Database -- Might take some time!")
-    url = "https://www.dropbox.com/s/4hklnvawtshjay9/Lookup_Table_Fast_PreCompData_V2.p?dl=1"
-    u = urllib.request.urlopen(url)
-    data = u.read()
-    u.close()
-    # Create folder
-    os.makedirs(os.path.split(p_)[0], exist_ok=True)
-    with open(p_, "wb") as f :
-        f.write(data)
-precompiled_data_Lookup_Table = pickle.load( open( p_, "rb" ) )
+# '''
+# Download LookupTable Data, and precompile it for interp_od
+# '''
+# p_ = getpath('Projects','Data','LookupTable','Lookup_Table_Fast_PreCompData_V2.p')
+# if not os.path.isfile(p_):
+#     print("Downloading Lookup Database -- Might take some time!")
+#     url = "https://www.dropbox.com/s/4hklnvawtshjay9/Lookup_Table_Fast_PreCompData_V2.p?dl=1"
+#     u = urllib.request.urlopen(url)
+#     data = u.read()
+#     u.close()
+#     # Create folder
+#     os.makedirs(os.path.split(p_)[0], exist_ok=True)
+#     with open(p_, "wb") as f :
+#         f.write(data)
+# precompiled_data_Lookup_Table = pickle.load( open( p_, "rb" ) )
 
 
-'''
-Download Mark EoS Density Generator
-'''
-p_ = getpath('Projects','Data','EoS','Mark_Density_EoS_Extended_Data4Python.p')
-if not os.path.isfile(p_):
-    print("Downloading Database -- Might take some time!")
-    url = "https://www.dropbox.com/s/abxs9yarrgohzy8/Mark_Density_EoS_Extended_Data4Python.p?dl=1"
-    u = urllib.request.urlopen(url)
-    data = u.read()
-    u.close()
-    # Create folder
-    os.makedirs(os.path.split(p_)[0], exist_ok=True)
-    with open(p_, "wb") as f :
-        f.write(data)
-precompiled_data_EoS_Density_Generator = pickle.load( open( p_, "rb" ) )
+# '''
+# Download Mark EoS Density Generator
+# '''
+# p_ = getpath('Projects','Data','EoS','Mark_Density_EoS_Extended_Data4Python.p')
+# if not os.path.isfile(p_):
+#     print("Downloading Database -- Might take some time!")
+#     url = "https://www.dropbox.com/s/abxs9yarrgohzy8/Mark_Density_EoS_Extended_Data4Python.p?dl=1"
+#     u = urllib.request.urlopen(url)
+#     data = u.read()
+#     u.close()
+#     # Create folder
+#     os.makedirs(os.path.split(p_)[0], exist_ok=True)
+#     with open(p_, "wb") as f :
+#         f.write(data)
+# precompiled_data_EoS_Density_Generator = pickle.load( open( p_, "rb" ) )
 
-'''
-Download Li6 scattering lengths
-'''
-p_ = getpath('Projects','Data','EoS','Li6_scattering_length_jochim_julienne_2013_Data4Python.p')
-if not os.path.isfile(p_):
-    print("Downloading scattering lengths")
-    url = "https://www.dropbox.com/s/i01berhdhavh882/scatteringLi6.p?dl=1"
-    u = urllib.request.urlopen(url)
-    data = u.read()
-    u.close()
-    # Create folder
-    os.makedirs(os.path.split(p_)[0], exist_ok=True)
-    with open(p_, "wb") as f :
-        f.write(data)
-scattering_length_data = pickle.load( open( p_, "rb" ) )
-a_12_interp = scipy.interpolate.interp1d(scattering_length_data['B'], scattering_length_data['a12'])
-a_23_interp = scipy.interpolate.interp1d(scattering_length_data['B'], scattering_length_data['a23'])
-a_13_interp = scipy.interpolate.interp1d(scattering_length_data['B'], scattering_length_data['a13'])
+# '''
+# Download Li6 scattering lengths
+# '''
+# p_ = getpath('Projects','Data','EoS','Li6_scattering_length_jochim_julienne_2013_Data4Python.p')
+# if not os.path.isfile(p_):
+#     print("Downloading scattering lengths")
+#     url = "https://www.dropbox.com/s/i01berhdhavh882/scatteringLi6.p?dl=1"
+#     u = urllib.request.urlopen(url)
+#     data = u.read()
+#     u.close()
+#     # Create folder
+#     os.makedirs(os.path.split(p_)[0], exist_ok=True)
+#     with open(p_, "wb") as f :
+#         f.write(data)
+# scattering_length_data = pickle.load( open( p_, "rb" ) )
+# a_12_interp = scipy.interpolate.interp1d(scattering_length_data['B'], scattering_length_data['a12'])
+# a_23_interp = scipy.interpolate.interp1d(scattering_length_data['B'], scattering_length_data['a23'])
+# a_13_interp = scipy.interpolate.interp1d(scattering_length_data['B'], scattering_length_data['a13'])
 
-'''
-Initialize cst_## objects
-'''
-cst_LiD2 = cst(atom='LiD2')
-cst_LiD1 = cst(atom='LiD1')
-cst_NaD2 = cst(atom='NaD2')
-cst_NaD1 = cst(atom='NaD1')
-cst_ = cst_LiD2
-# Special constants needed throughout the different codes
-cst_.ldB_prefactor = ((cst_.twopi * cst_.hbar**2)/(cst_.mass))**(1/2)
-cst_.xi = 0.37
-cst_.virial_coef = [1, 3*2**(1/2)/8, -0.29095295, 0.065]
-cst_.ideal_gas_density_prefactor = 1/(6*np.pi**2) * (2*cst_.mass/cst_.hbar**2)**(3/2)
-twopi = 2 * np.pi
-pi = np.pi
-kHz = 1e3 * cst_.h
+# '''
+# Initialize cst_## objects
+# '''
+# cst_LiD2 = cst(atom='LiD2')
+# cst_LiD1 = cst(atom='LiD1')
+# cst_NaD2 = cst(atom='NaD2')
+# cst_NaD1 = cst(atom='NaD1')
+# cst_ = cst_LiD2
+# # Special constants needed throughout the different codes
+# cst_.ldB_prefactor = ((cst_.twopi * cst_.hbar**2)/(cst_.mass))**(1/2)
+# cst_.xi = 0.37
+# cst_.virial_coef = [1, 3*2**(1/2)/8, -0.29095295, 0.065]
+# cst_.ideal_gas_density_prefactor = 1/(6*np.pi**2) * (2*cst_.mass/cst_.hbar**2)**(3/2)
+# twopi = 2 * np.pi
+# pi = np.pi
+# kHz = 1e3 * cst_.h
 
 
 '''
