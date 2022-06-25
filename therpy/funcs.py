@@ -3030,7 +3030,7 @@ def surface_fit(*args, **kwargs):
     # Show
     if show:
         fig,ax = plt.subplots(nrows=1,ncols=1)
-        ax.imshow(z,cmap='gray', origin=0)
+        ax.imshow(z,cmap='gray', origin='lower')
         ax.contour(res['zfit'], cmap='jet')
         res['fig'] = fig
 
