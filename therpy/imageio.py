@@ -7,11 +7,11 @@ import datetime
 from datetime import timedelta
 import re
 # import pyfits
-import astropy.io.fits as pyfits
+# import astropy.io.fits as pyfits
 import matplotlib.pyplot as pp
 from shutil import copyfile
-import warnings
-import json
+# import warnings
+# import json
 from sys import platform as _platform
 
 

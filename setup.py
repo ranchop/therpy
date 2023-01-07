@@ -7,7 +7,7 @@ setup(
     packages=['therpy',],
 
     # Package requirements
-    install_requires=['tqdm', 'astropy'],
+    # install_requires=['tqdm', 'astropy'],
 
     # metadata
     author='Parth Patel',
